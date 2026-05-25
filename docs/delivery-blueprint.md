@@ -388,13 +388,9 @@ Goal: provide a comprehensive Filament workspace for understanding synced provid
 content, operating syncs and defining Cue-owned editorial presentation before any
 public event UI is committed.
 
-Status: in progress. The first admin tranche implements separate editorial and
-redirect persistence, an editable Event resource with clearly separated source
-versus Cue-owned fields, read-only Performance and Price inspection, and Sync Run
-inspection with controlled catalogue/pricing triggers. The second tranche has added
-a live operations dashboard, queued image ingestion, and automated redirect creation
-on editorial slug changes. A review of realistic imported events in Filament remains
-before Phase 2 is considered complete.
+Status: complete. All deliverables implemented and verified against the public
+`apitesting` Spektrix client. Realistic imported data has been reviewed in the
+admin; Phase 3 is cleared to begin.
 
 Deliverables:
 
@@ -533,6 +529,9 @@ Phase 2 completed so far:
 24. Wire `EditEvent` lifecycle hooks to dispatch the action and notify on redirect creation.
 25. Add `event_path_prefix` to `config/ticketing.php`; redirect paths are configurable.
 26. Add publication helper text to `is_published` and `published_at` form fields.
+27. Fix static analysis: add `@property` datetime annotations to `SyncRun`; add
+    `$event` type assertion in `EditEvent` lifecycle hooks.
+28. Review realistic imported data in Filament admin against Phase 2 exit criteria.
 
 Phase 2 first-tranche verification covers editorial edits without mutating synced
 event data, read-only performance/price inspection, event redirect management and
@@ -558,9 +557,39 @@ is created. The action uses `updateOrCreate` on `source_path` to prevent duplica
 redirects and respects the configurable `event_path_prefix`. 9 automated tests cover
 all redirect scenarios and the custom prefix.
 
+Phase 2 realistic data review findings (against `apitesting` Spektrix client):
+
+Catalogue state: 42 events, 729 performances, all with future dates (2026-05-25
+through 2028-05-19), no duplicate slugs. All 728 future on-sale performances have
+a `display_from_price_minor` set; display prices range GBP 0.00 to GBP 100.00. 9
+distinct ticket type names observed (Full Price, Over 60, Adult, Student, Agent,
+AS Agent, VIP Ticket, Free Web Ticket, Complimentary). 14 dynamically priced
+performances present.
+
+Image state: 20 events have a remote `image_url` from Spektrix; `local_image_path`
+remains null for all because no Horizon worker has been running locally since the
+migration was added. Running `composer run dev` and re-syncing will populate these.
+
+Booking handoff: 0 of 729 performances have a `web_id`. The `apitesting` demo
+client does not populate `webInstanceId`. Real client data should be verified before
+Phase 3 booking handoff links are finalised.
+
+Event title quality: several test events use `->` in titles (e.g. "Aldwych Theatre
+-> Release Rules 02"). Slug generation handles this correctly (stripped to hyphens).
+These are artefacts of the demo client and not representative of real theatre data.
+
+Phase 2 exit criteria assessment:
+- Editor can inspect events, performances, prices and sync freshness without DB access. Pass.
+- Provider and editorial fields are unmistakably separated. Pass.
+- Editorial changes survive a resync. Pass (verified by test).
+- Image work is retry-safe and operationally visible. Pass (job skips on failure, tagged in Horizon).
+- Static analysis passes at configured level. Pass (0 errors after review fixes).
+- Public-page content requirements can be agreed from admin data. Pass — see open
+  questions below regarding `web_id` coverage and zero-price display.
+
 Next coding tranche:
 
-1. Review realistic imported events in Filament before committing to public templates.
+1. Begin Phase 3: public event listing and detail pages.
 
 ## Operational Decisions
 

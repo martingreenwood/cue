@@ -5,10 +5,21 @@ declare(strict_types=1);
 namespace App\Domains\Events\Models;
 
 use App\Domains\Events\Enums\SyncRunStatus;
+use Carbon\CarbonImmutable;
 use Database\Factories\Domains\Events\Models\SyncRunFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
+/**
+ * @property CarbonImmutable $queued_at
+ * @property CarbonImmutable|null $started_at
+ * @property CarbonImmutable|null $finished_at
+ * @property int $events_synced
+ * @property int $performances_synced
+ * @property int $performances_queued
+ * @property int $performances_failed
+ * @property int $prices_synced
+ */
 class SyncRun extends Model
 {
     /** @use HasFactory<SyncRunFactory> */
