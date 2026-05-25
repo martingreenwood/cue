@@ -10,6 +10,13 @@ return [
         'future_days' => (int) env('TICKETING_CATALOGUE_FUTURE_DAYS', 730),
     ],
 
+    'pricing' => [
+        'currency' => env('TICKETING_CURRENCY', 'GBP'),
+        'sync_enabled' => (bool) env('TICKETING_PRICE_SYNC_ENABLED', false),
+        'sync_cron' => env('TICKETING_PRICE_SYNC_CRON', '*/15 * * * *'),
+        'stale_after_minutes' => (int) env('TICKETING_PRICE_STALE_AFTER_MINUTES', 60),
+    ],
+
     'providers' => [
         'spektrix' => [
             'base_url' => env('SPEKTRIX_API_BASE_URL'),

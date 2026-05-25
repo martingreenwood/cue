@@ -6,6 +6,7 @@ namespace App\Domains\Ticketing\Contracts;
 
 use App\Domains\Ticketing\Data\EventData;
 use App\Domains\Ticketing\Data\PerformanceData;
+use App\Domains\Ticketing\Data\PerformancePriceData;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
 
@@ -22,4 +23,9 @@ interface TicketingProvider
      * @return Collection<int, PerformanceData>
      */
     public function performances(CarbonImmutable $from, CarbonImmutable $until): Collection;
+
+    /**
+     * @return Collection<int, PerformancePriceData>
+     */
+    public function performancePrices(string $performanceExternalId): Collection;
 }

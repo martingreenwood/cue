@@ -32,6 +32,9 @@ class SyncRunFactory extends Factory
             'queued_at' => now(),
             'events_synced' => 0,
             'performances_synced' => 0,
+            'performances_queued' => 0,
+            'performances_failed' => 0,
+            'prices_synced' => 0,
         ];
     }
 }

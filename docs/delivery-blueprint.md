@@ -21,6 +21,8 @@ Cue initially solves:
 
 - reliable catalogue synchronisation from Spektrix;
 - local management of events, performances, display pricing and event imagery;
+- a comprehensive Filament administration surface for inspecting synced data and
+  defining editorial content ownership;
 - server-rendered public listings and event pages;
 - clear booking handoff into Spektrix purchase flows;
 - admin visibility into imports, failures and editorial overrides.
@@ -132,6 +134,7 @@ Reference material:
 - Keep Spektrix-specific request and response details inside infrastructure code.
 - Make locally persisted data the source for public event rendering.
 - Keep Filament resource and page classes limited to admin presentation and action dispatch.
+- Build and validate the admin content model before committing to public presentation.
 - Put orchestration in actions and external access behind contracts.
 - Use queued jobs for all external synchronisation work.
 - Make imports idempotent, retry-safe and observable.
@@ -204,6 +207,8 @@ Public event controllers
 
 Filament operations tooling
 
+- Presents events, performances, prices, sync health and provider diagnostics.
+- Allows controlled editorial overrides without mutating provider-owned source data.
 - Dispatches sync jobs and displays recorded outcomes.
 - Does not contain integration logic.
 
@@ -222,7 +227,7 @@ Minimum responsibilities:
 - sale and publication state;
 - remote image metadata pending media download;
 - first and last known performance timestamps;
-- SEO/editorial override fields only when the public page requires them.
+- separately owned editorial override fields validated through the admin content model.
 
 ### Performances
 
@@ -266,7 +271,25 @@ Minimum responsibilities:
 ### Media
 
 Do not build a full media library first. Begin with remote event image fields and
-then add queued download/optimisation once event sync and rendering are proven.
+then add queued download/optimisation once event sync and the admin presentation of
+source imagery are proven.
+
+### Editorial Ownership
+
+The administration phase must establish which data is owned by the ticketing
+provider and which is owned by Cue editors:
+
+| Data | Initial Ownership |
+| --- | --- |
+| Provider identifiers, on-sale state, instance dates and current price data | Synced and read-only in Filament |
+| Synced event title, descriptions and remote images | Visible provider source data |
+| Published title, summary, body content and hero image selection | Editorial overrides with source fallback |
+| SEO title, meta description, canonical behaviour and redirect history | Editorial |
+| Publication and visibility state | Editorial, independent of ticketing sale state |
+
+A ticketing resync may update provider-owned data but must not overwrite editorial
+overrides. Public rendering is deferred until this ownership model is reviewable
+through Filament against realistic imported data.
 
 ## Delivery Roadmap
 
@@ -328,6 +351,12 @@ Exit criteria:
 Goal: store and display meaningful performance pricing without implying unavailable
 inventory or misleading audiences with ineligible minimum prices.
 
+Status: implemented and verified against one public `apitesting` performance.
+The recurring schedule is wired with overlap protection and remains disabled by
+default until an environment deliberately enables it. Public stale-price
+presentation is consumed in Phase 3, while pricing freshness is exposed for
+inspection in Phase 2.
+
 Deliverables:
 
 - generic price DTOs and provider contract capability;
@@ -353,17 +382,61 @@ Exit criteria:
 - headline prices follow the agreed display policy;
 - stale or failed price sync behaviour is visible and tested.
 
-### Phase 2: Public Event Experience
+### Phase 2: Administration And Editorial Model
 
-Goal: prove the locally synced catalogue creates a fast usable theatre website journey.
+Goal: provide a comprehensive Filament workspace for understanding synced provider
+content, operating syncs and defining Cue-owned editorial presentation before any
+public event UI is committed.
 
-Precondition: the pricing foundation is complete, or public pages ship without
-advertised prices.
+Status: in progress. The first admin tranche implements separate editorial and
+redirect persistence, an editable Event resource with clearly separated source
+versus Cue-owned fields, read-only Performance and Price inspection, and Sync Run
+inspection with controlled catalogue/pricing triggers. The second tranche has added
+a live operations dashboard with catalogue and pricing health widgets. Media
+processing and remaining editorial workflow refinement continue in this phase.
+
+Deliverables:
+
+- Filament operations dashboard showing catalogue and pricing sync status, failures,
+  stale data and manual refresh actions;
+- event management views showing provider source fields separately from editorial
+  overrides;
+- related performance and pricing inspection, including default headline price,
+  concessions, dynamic-pricing state and freshness;
+- read-only technical diagnostics for provider identifiers and captured payloads
+  where useful for development and support;
+- editorial override storage for published title, summaries/body content,
+  publication/visibility and SEO metadata;
+- queued image downloads and optimisation;
+- local storage strategy and image variants;
+- editorial image selection/override tooling;
+- redirect management for editorial slug changes;
+- cache invalidation on publishable changes.
+
+Exit criteria:
+
+- an editor can inspect an imported event with its performances, prices and sync
+  freshness without reading the database or raw API;
+- synced provider fields and editable Cue fields are unmistakably separated;
+- editor changes survive a catalogue/pricing resync;
+- editors can alter allowed fields without corrupting provider sync;
+- image work is retry-safe and operationally visible;
+- public-page content requirements can be agreed from representative admin-managed
+  data rather than guessed from provider responses.
+
+### Phase 3: Public Event Experience
+
+Goal: render an accessible, fast theatre website journey from the editorially
+managed and locally synced event catalogue.
+
+Precondition: the administration and editorial model has been reviewed against
+representative event, performance and pricing data.
 
 Deliverables:
 
 - public event listing route and server-rendered Blade view;
 - event detail page with performance selection;
+- public rendering using editorial overrides with provider-source fallback;
 - clearly labelled locally sourced performance prices with freshness-aware fallback;
 - responsive and accessible event presentation;
 - booking handoff link/button using persisted provider data;
@@ -373,36 +446,18 @@ Deliverables:
 Exit criteria:
 
 - pages render with the ticketing API unavailable;
+- public pages avoid remote image dependencies for synced media;
 - accessible keyboard and screen-reader paths are checked;
 - key pages meet agreed performance targets;
 - booking handoff has been tested against an approved Spektrix client/test setup.
 
-### Phase 3: Images And Editorial Control
-
-Goal: move event presentation beyond remotely owned imagery and raw ticketing copy.
-
-Deliverables:
-
-- queued image downloads and optimisation;
-- local storage strategy and image variants;
-- editorial overrides for descriptions, imagery and SEO fields;
-- Filament event management views that clearly distinguish synced and overridden data;
-- cache invalidation on publishable changes.
-
-Exit criteria:
-
-- public pages avoid remote image dependencies for synced media;
-- editors can alter allowed fields without corrupting provider sync;
-- image work is retry-safe and operationally visible.
-
-### Phase 4: Operations And Availability
+### Phase 4: Availability And Operational Hardening
 
 Goal: provide the operational confidence required for launch.
 
 Deliverables:
 
-- Filament sync dashboard, manual trigger and failure detail views;
-- last successful sync visibility and alerts for stale data;
+- refine admin diagnostics and alerts discovered through operational use;
 - availability approach validated and implemented where product needs it;
 - cache warming and scheduled sync policy;
 - diagnostics, logging and failure recovery documentation.
@@ -433,9 +488,9 @@ Exit criteria:
 - all required monitoring and restore procedures are tested;
 - launch owners approve the operational runbook and acceptance checklist.
 
-## First Engineering Tranche
+## Completed Foundations And Next Tranche
 
-Completed:
+Phase 1 completed:
 
 1. Add `config/ticketing.php` and environment keys for one Spektrix public client URL.
 2. Create a generic ticketing provider contract and readonly event/performance DTOs.
@@ -447,12 +502,44 @@ Completed:
 Live development verification imported 42 events and 729 performances from the
 public `apitesting` client; a second import retained the same record counts.
 
+Phase 1B completed:
+
+7. Add generic price DTOs and extend the ticketing provider contract.
+8. Implement Spektrix `instances/{id}/price-list` mapping with fixture coverage.
+9. Persist performance prices in minor currency units with sync timestamps.
+10. Add a queued, idempotent price refresh job with overlap protection.
+11. Implement `StandardPriceDisplayPolicy` to select band-default eligible prices.
+12. Record dynamic-pricing configuration and stale-price behaviour in `config/ticketing.php`.
+
+Development verification imported 12 price rows for performance `#1` from
+the public `apitesting` client. The source included GBP 15 concession prices; Cue
+correctly selected the dynamically eligible default Full Price value of GBP 20
+as `display_from_price_minor`.
+
+Phase 2 completed so far:
+
+13. Add `EventEditorial` and `EventRedirect` models with migrations and factories.
+14. Implement editable `EventResource` with source and editorial fields clearly separated.
+15. Add read-only `PerformanceResource` and `PricesRelationManager` for price inspection.
+16. Add `SyncRunResource` with controlled catalogue and pricing dispatch actions.
+17. Add `RedirectsRelationManager` for editorial slug change management.
+18. Add `CatalogueHealthWidget` and `PricingSyncHealthWidget` to the operations dashboard.
+
+Phase 2 first-tranche verification covers editorial edits without mutating synced
+event data, read-only performance/price inspection, event redirect management and
+manual sync dispatch from Filament.
+
+Phase 2 dashboard verification: `CatalogueHealthWidget` shows event/performance
+counts and last catalogue sync state; `PricingSyncHealthWidget` shows priced
+performance ratio, stale pricing count against the configured freshness threshold,
+and last price sync state. Both widgets poll every 30 seconds and are backed by
+11 automated tests.
+
 Next coding tranche:
 
-1. Add price list DTOs, persistence and a queued performance pricing sync.
-2. Define and test the initial headline price policy using standard/default prices.
-3. Record dynamic pricing freshness and stale-state handling.
-4. Build server-rendered public event pages from the priced local catalogue.
+1. Implement queued image ingestion/optimisation behind the managed hero-image workflow.
+2. Refine editorial workflow, publication safeguards and redirect automation on slug changes.
+3. Review realistic imported events in Filament before committing to public templates.
 
 ## Operational Decisions
 
@@ -468,6 +555,7 @@ Accepted now:
 | Spektrix implemented as an adapter | Prevents external provider naming from shaping Cue's domain. |
 | Local price-list snapshots with regular refresh | Makes event pages fast while acknowledging dynamic pricing and leaving final transaction pricing to Spektrix. |
 | No raw-minimum "cheapest" headline | Avoids misrepresenting concession or restricted prices as generally available ticket prices. |
+| Admin content modelling before public pages | Lets editors and developers validate usable content, source ownership and pricing presentation against realistic imported data. |
 
 Deferred decisions:
 
@@ -478,8 +566,8 @@ Deferred decisions:
 | Availability freshness strategy | Before public messaging claims tickets or price bands are currently available. |
 | Final display-price eligibility policy | Before public pages advertise "from" pricing. |
 | Pricing refresh SLA for dynamically priced performances | Before priced pages are enabled outside development. |
-| Media processing implementation | Once provider image shapes and delivery requirements are tested. |
-| CMS breadth beyond event overrides | After the catalogue vertical slice is usable. |
+| Media processing implementation details | During the admin editorial phase, once provider image shapes and editorial needs are inspected. |
+| CMS breadth beyond event overrides | After the event-focused admin and public vertical slice is usable. |
 
 ## Production Gates
 
@@ -517,11 +605,13 @@ Deferred decisions:
 
 ## Open Product Questions
 
-These questions should be resolved as their answers become necessary, rather than
-blocking catalogue sync:
+These questions should be resolved as their answers become necessary. The admin
+content-modelling phase exists to answer the editorial and presentation questions
+before public templates are built:
 
 1. Which first theatre or Spektrix test client supplies realistic fixture data?
-2. What editorial fields must override ticketing-supplied content at launch?
+2. Which editorial override, media, SEO, publication and redirect fields must be
+   manageable in Filament at launch?
 3. Does launch require live seat/availability messaging or only booking handoff?
 4. What event taxonomy and filtering is essential for the first public listing?
 5. What are the initial accessibility and page performance acceptance targets?

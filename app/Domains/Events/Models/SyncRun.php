@@ -26,6 +26,9 @@ class SyncRun extends Model
         'finished_at',
         'events_synced',
         'performances_synced',
+        'performances_queued',
+        'performances_failed',
+        'prices_synced',
         'error_message',
         'context',
     ];
@@ -42,6 +45,9 @@ class SyncRun extends Model
             'finished_at' => 'immutable_datetime',
             'events_synced' => 'integer',
             'performances_synced' => 'integer',
+            'performances_queued' => 'integer',
+            'performances_failed' => 'integer',
+            'prices_synced' => 'integer',
             'context' => 'array',
         ];
     }

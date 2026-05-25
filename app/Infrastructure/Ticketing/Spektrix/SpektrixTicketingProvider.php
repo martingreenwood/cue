@@ -7,6 +7,7 @@ namespace App\Infrastructure\Ticketing\Spektrix;
 use App\Domains\Ticketing\Contracts\TicketingProvider;
 use App\Domains\Ticketing\Data\EventData;
 use App\Domains\Ticketing\Data\PerformanceData;
+use App\Domains\Ticketing\Data\PerformancePriceData;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Collection;
@@ -44,6 +45,27 @@ final class SpektrixTicketingProvider implements TicketingProvider
     }
 
     /**
+     * @return Collection<int, PerformancePriceData>
+     */
+    public function performancePrices(string $performanceExternalId): Collection
+    {
+        $payload = $this->requestObject('instances/'.rawurlencode($performanceExternalId).'/price-list');
+        $prices = $payload['prices'] ?? null;
+
+        if (! is_array($prices)) {
+            throw new UnexpectedValueException('Spektrix price-list response does not include prices.');
+        }
+
+        return collect($prices)->map(function (mixed $price): PerformancePriceData {
+            if (! is_array($price)) {
+                throw new UnexpectedValueException('Spektrix price-list response includes an invalid price.');
+            }
+
+            return $this->mapPerformancePrice($price);
+        });
+    }
+
+    /**
      * @param  array<string, string>  $query
      * @return list<array<string, mixed>>
      */
@@ -69,6 +91,23 @@ final class SpektrixTicketingProvider implements TicketingProvider
         }
 
         return $records;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function requestObject(string $resource): array
+    {
+        $payload = $this->client()
+            ->get($resource)
+            ->throw()
+            ->json();
+
+        if (! is_array($payload)) {
+            throw new UnexpectedValueException("Spektrix {$resource} response is not a JSON object.");
+        }
+
+        return $payload;
     }
 
     private function client(): PendingRequest
@@ -138,6 +177,32 @@ final class SpektrixTicketingProvider implements TicketingProvider
     /**
      * @param  array<string, mixed>  $payload
      */
+    private function mapPerformancePrice(array $payload): PerformancePriceData
+    {
+        $ticketType = $payload['ticketType'] ?? null;
+        $priceBand = $payload['priceBand'] ?? null;
+
+        if (! is_array($ticketType) || ! is_array($priceBand)) {
+            throw new UnexpectedValueException('Spektrix price-list response does not include ticket type and price band references.');
+        }
+
+        return new PerformancePriceData(
+            externalId: $this->requiredString($payload, 'id'),
+            ticketTypeExternalId: $this->requiredString($ticketType, 'id'),
+            ticketTypeName: $this->requiredString($ticketType, 'name'),
+            priceBandExternalId: $this->requiredString($priceBand, 'id'),
+            priceBandName: $this->requiredString($priceBand, 'name'),
+            amountMinor: $this->amountMinor($payload['amount'] ?? null),
+            currency: $this->currency(),
+            isBandDefault: (bool) ($payload['isBandDefault'] ?? false),
+            isDynamicPricingEligible: (bool) ($ticketType['attribute_EligibleForDynamicPricing'] ?? false),
+            sourcePayload: $payload,
+        );
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     */
     private function requiredString(array $payload, string $key): string
     {
         $value = $payload[$key] ?? null;
@@ -164,5 +229,35 @@ final class SpektrixTicketingProvider implements TicketingProvider
         return is_string($value) && $value !== ''
             ? CarbonImmutable::parse($value)->utc()
             : null;
+    }
+
+    private function amountMinor(mixed $amount): int
+    {
+        if (is_int($amount)) {
+            return $amount * 100;
+        }
+
+        if (is_float($amount)) {
+            $amount = number_format($amount, 2, '.', '');
+        }
+
+        if (! is_string($amount) || preg_match('/^\d+(?:\.\d{1,2})?$/', $amount) !== 1) {
+            throw new UnexpectedValueException('Spektrix price amount is not a valid positive currency value.');
+        }
+
+        [$major, $minor] = array_pad(explode('.', $amount, 2), 2, '');
+
+        return ((int) $major * 100) + (int) str_pad($minor, 2, '0');
+    }
+
+    private function currency(): string
+    {
+        $currency = config('ticketing.pricing.currency');
+
+        if (! is_string($currency) || preg_match('/^[A-Z]{3}$/', $currency) !== 1) {
+            throw new LogicException('A three-letter uppercase ticketing pricing currency must be configured.');
+        }
+
+        return $currency;
     }
 }

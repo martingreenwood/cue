@@ -8,6 +8,7 @@ use Database\Factories\Domains\Events\Models\EventFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Event extends Model
 {
@@ -41,6 +42,22 @@ class Event extends Model
     public function performances(): HasMany
     {
         return $this->hasMany(Performance::class);
+    }
+
+    /**
+     * @return HasOne<EventEditorial, $this>
+     */
+    public function editorial(): HasOne
+    {
+        return $this->hasOne(EventEditorial::class);
+    }
+
+    /**
+     * @return HasMany<EventRedirect, $this>
+     */
+    public function redirects(): HasMany
+    {
+        return $this->hasMany(EventRedirect::class);
     }
 
     /**

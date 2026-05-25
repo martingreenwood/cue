@@ -11,11 +11,14 @@ developers.
 
 ## Current Status
 
-Cue is in catalogue foundation development. It now imports public Spektrix events
-and performances into local storage through a Horizon-observable sync job. The next
-slice is performance pricing, so public pages can show defensible "from" prices
-without relying on live provider requests or presenting concessions as standard
-ticket prices.
+Cue is in vertical-slice development. It now imports public Spektrix events,
+performances and current performance price lists into local storage through
+Horizon-observable sync jobs. Pricing uses default ticket prices for headline
+"from" amounts rather than presenting concessions as standard ticket prices. The
+current focus is a comprehensive Filament administration and editorial surface
+before public event pages are designed. The first admin tranche now separates
+editorial event content from synced provider data and exposes performances, pricing,
+redirects and sync operations for inspection.
 
 Verified local stack:
 
@@ -46,9 +49,10 @@ The first implemented tranche is the catalogue sync foundation:
 
 Next:
 
-1. Sync current performance price lists locally, with dynamic-pricing freshness rules.
-2. Render an accessible server-side event listing and detail page from priced local data.
-3. Expose sync status and a manual sync trigger in Filament.
+1. Add dashboard widgets for sync health, failures and stale pricing.
+2. Complete queued managed-image ingestion and optimisation.
+3. Refine publication and redirect workflow after reviewing imported data in Filament.
+4. Design public event pages from the reviewed admin-managed content model.
 
 ## Local Development
 

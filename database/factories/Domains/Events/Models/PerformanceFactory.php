@@ -37,6 +37,10 @@ class PerformanceFactory extends Factory
             'sales_end_at' => now()->addWeek()->subHour(),
             'is_on_sale' => true,
             'is_cancelled' => false,
+            'display_from_price_minor' => null,
+            'display_currency' => null,
+            'has_dynamic_pricing' => false,
+            'prices_synced_at' => null,
             'source_payload' => [],
             'synced_at' => now(),
         ];

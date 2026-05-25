@@ -11,3 +11,9 @@ Artisan::command('inspire', function () {
 Schedule::command('horizon:snapshot')
     ->everyFiveMinutes()
     ->onOneServer();
+
+Schedule::command('ticketing:sync-prices')
+    ->cron((string) config('ticketing.pricing.sync_cron', '*/15 * * * *'))
+    ->when(fn (): bool => (bool) config('ticketing.pricing.sync_enabled', false))
+    ->withoutOverlapping()
+    ->onOneServer();

@@ -84,3 +84,48 @@ function spektrixPerformancePayload(array $overrides = []): array
         'cancelled' => false,
     ], $overrides);
 }
+
+/**
+ * @return array<string, mixed>
+ */
+function spektrixPriceListPayload(): array
+{
+    return [
+        'id' => '7801ATTBPVLSHPLVGKMJNMMDGBTHMPBTK',
+        'prices' => [
+            [
+                'id' => 'default-band-a',
+                'isBandDefault' => true,
+                'amount' => 40.00,
+                'ticketType' => [
+                    'id' => 'full-price',
+                    'name' => 'Full Price',
+                    'attribute_EligibleForDynamicPricing' => true,
+                ],
+                'priceBand' => ['id' => 'band-a', 'name' => 'Band A'],
+            ],
+            [
+                'id' => 'default-band-c',
+                'isBandDefault' => true,
+                'amount' => 20.00,
+                'ticketType' => [
+                    'id' => 'full-price',
+                    'name' => 'Full Price',
+                    'attribute_EligibleForDynamicPricing' => true,
+                ],
+                'priceBand' => ['id' => 'band-c', 'name' => 'Band C'],
+            ],
+            [
+                'id' => 'student-band-c',
+                'isBandDefault' => false,
+                'amount' => 15.00,
+                'ticketType' => [
+                    'id' => 'student',
+                    'name' => 'Student',
+                    'attribute_EligibleForDynamicPricing' => false,
+                ],
+                'priceBand' => ['id' => 'band-c', 'name' => 'Band C'],
+            ],
+        ],
+    ];
+}
