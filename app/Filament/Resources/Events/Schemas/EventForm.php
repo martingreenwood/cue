@@ -78,9 +78,11 @@ class EventForm
                     ->schema([
                         Grid::make(2)->schema([
                             Toggle::make('is_published')
-                                ->label('Published'),
+                                ->label('Published')
+                                ->helperText('Without a Publish from date, the event becomes immediately visible when saved.'),
                             DateTimePicker::make('published_at')
-                                ->label('Publish from'),
+                                ->label('Publish from')
+                                ->helperText('Leave empty to publish immediately, or set a future date to schedule visibility.'),
                             TextInput::make('seo_title')
                                 ->label('SEO title')
                                 ->maxLength(255)

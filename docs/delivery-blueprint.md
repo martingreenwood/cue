@@ -392,8 +392,9 @@ Status: in progress. The first admin tranche implements separate editorial and
 redirect persistence, an editable Event resource with clearly separated source
 versus Cue-owned fields, read-only Performance and Price inspection, and Sync Run
 inspection with controlled catalogue/pricing triggers. The second tranche has added
-a live operations dashboard and queued image ingestion. Remaining editorial workflow
-refinement continues in this phase.
+a live operations dashboard, queued image ingestion, and automated redirect creation
+on editorial slug changes. A review of realistic imported events in Filament remains
+before Phase 2 is considered complete.
 
 Deliverables:
 
@@ -528,6 +529,10 @@ Phase 2 completed so far:
 20. Process downloaded images with PHP GD (max 1400px wide, 85% JPEG) and store on the public disk.
 21. Dispatch image download jobs from `SyncCatalogueAction` after the transaction, only for new or changed image URLs.
 22. Show downloaded source image in `EventInfolist` (`ImageEntry`) and `EventsTable` (`ImageColumn`).
+23. Add `CreateSlugRedirectAction` to auto-create 301 redirects on editorial slug changes.
+24. Wire `EditEvent` lifecycle hooks to dispatch the action and notify on redirect creation.
+25. Add `event_path_prefix` to `config/ticketing.php`; redirect paths are configurable.
+26. Add publication helper text to `is_published` and `published_at` form fields.
 
 Phase 2 first-tranche verification covers editorial edits without mutating synced
 event data, read-only performance/price inspection, event redirect management and
@@ -545,10 +550,17 @@ are logged and skipped without failing the job. Dispatch is idempotent — jobs 
 only queued for events with a new or changed `image_url`. 7 automated tests cover
 download, JPEG output, silent skip on failure, and dispatch conditions.
 
+Phase 2 editorial workflow verification: `CreateSlugRedirectAction` handles three
+cases — slug changed, slug set for the first time (differs from provider), slug
+cleared back to null. `EditEvent` captures the pre-save slug in `beforeSave()` and
+dispatches the action in `afterSave()`, showing an info notification when a redirect
+is created. The action uses `updateOrCreate` on `source_path` to prevent duplicate
+redirects and respects the configurable `event_path_prefix`. 9 automated tests cover
+all redirect scenarios and the custom prefix.
+
 Next coding tranche:
 
-1. Refine editorial workflow, publication safeguards and redirect automation on slug changes.
-2. Review realistic imported events in Filament before committing to public templates.
+1. Review realistic imported events in Filament before committing to public templates.
 
 ## Operational Decisions
 

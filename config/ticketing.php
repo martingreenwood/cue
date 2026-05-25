@@ -5,6 +5,8 @@ declare(strict_types=1);
 return [
     'default' => env('TICKETING_PROVIDER', 'spektrix'),
 
+    'event_path_prefix' => env('EVENT_PATH_PREFIX', '/events'),
+
     'catalogue' => [
         'past_days' => (int) env('TICKETING_CATALOGUE_PAST_DAYS', 0),
         'future_days' => (int) env('TICKETING_CATALOGUE_FUTURE_DAYS', 730),
