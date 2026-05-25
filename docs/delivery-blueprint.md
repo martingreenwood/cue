@@ -603,6 +603,7 @@ Accepted now:
 | --- | --- |
 || Blade, Livewire and Tailwind for public UI | Server rendering and progressive enhancement suit performance, SEO and accessibility goals. |
 || Spektrix booking handoff via ChooseSeats.aspx | Cue hands off to the Spektrix iframe using `WebInstanceId` (web_id) where set, falling back to `EventInstanceId` (integer prefix of external_id). Payment processing remains in Spektrix. |
+|| Zero-price display label | Operator-configurable via `TICKETING_ZERO_PRICE_DISPLAY` (`free` or `monetary`). Defaults to `free`. Phase 3 templates read this config rather than hard-coding the label. |
 | Filament for internal tools only | Keeps public architecture independent from admin framework internals. |
 | Valkey through Laravel Redis support for queues/cache/session | Supports Horizon and production-style local operations. |
 | Horizon from the first sync job | External integrations require retries, failure visibility and throughput monitoring. |
@@ -675,6 +676,11 @@ before public templates are built:
    explicitly labelled concession prices appear in event cards and detail pages?
 8. What maximum age is acceptable for a displayed price on dynamically priced
    performances before the UI suppresses it or marks it as indicative?
+
+Resolved during Phase 2 review:
+
+- Zero-price display: operator sets `TICKETING_ZERO_PRICE_DISPLAY=free` or `monetary`.
+- Booking handoff identifier: `web_id` (WebInstanceId) preferred, `(int) external_id` fallback.
 
 ## Working Rule
 

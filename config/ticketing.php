@@ -17,6 +17,9 @@ return [
         'sync_enabled' => (bool) env('TICKETING_PRICE_SYNC_ENABLED', false),
         'sync_cron' => env('TICKETING_PRICE_SYNC_CRON', '*/15 * * * *'),
         'stale_after_minutes' => (int) env('TICKETING_PRICE_STALE_AFTER_MINUTES', 60),
+        // Accepted values: 'free' or 'monetary'. Controls how performances with a
+        // display_from_price_minor of 0 are labelled in public-facing templates.
+        'zero_price_display' => env('TICKETING_ZERO_PRICE_DISPLAY', 'free'),
     ],
 
     'providers' => [
