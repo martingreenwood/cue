@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Events\Actions;
 
 use App\Domains\Events\Enums\SyncRunStatus;
+use App\Domains\Events\Jobs\DownloadEventImageJob;
 use App\Domains\Events\Models\Event;
 use App\Domains\Events\Models\Performance;
 use App\Domains\Events\Models\SyncRun;
@@ -42,11 +43,22 @@ final class SyncCatalogueAction
             $events = $this->provider->events($from, $until);
             $performances = $this->provider->performances($from, $until);
 
-            DB::transaction(function () use ($events, $performances): void {
+            /** @var list<int> $eventsNeedingImages */
+            $eventsNeedingImages = [];
+
+            DB::transaction(function () use ($events, $performances, &$eventsNeedingImages): void {
                 /** @var Collection<string, Event> $persistedEvents */
                 $persistedEvents = $events->mapWithKeys(fn (EventData $event): array => [
                     $event->externalId => $this->persistEvent($event),
                 ]);
+
+                $eventsNeedingImages = $persistedEvents
+                    ->filter(fn (Event $event): bool => $event->image_url !== null
+                        && ($event->local_image_path === null || $event->wasChanged('image_url'))
+                    )
+                    ->map(fn (Event $event): int => (int) $event->getKey())
+                    ->values()
+                    ->all();
 
                 $performances->each(function (PerformanceData $performance) use ($persistedEvents): void {
                     $event = $persistedEvents->get($performance->eventExternalId);
@@ -58,6 +70,10 @@ final class SyncCatalogueAction
                     $this->persistPerformance($performance, $event);
                 });
             });
+
+            foreach ($eventsNeedingImages as $eventId) {
+                DownloadEventImageJob::dispatch($eventId);
+            }
 
             $syncRun->update([
                 'status' => SyncRunStatus::Succeeded,

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\Resources\Events\Schemas;
 
 use Filament\Infolists\Components\IconEntry;
+use Filament\Infolists\Components\ImageEntry;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
@@ -55,6 +56,12 @@ class EventInfolist
                             TextEntry::make('first_performance_at')->dateTime(),
                             TextEntry::make('last_performance_at')->dateTime(),
                             TextEntry::make('summary')->label('Source summary')->columnSpanFull(),
+                            ImageEntry::make('local_image_path')
+                                ->label('Downloaded source image')
+                                ->disk('public')
+                                ->height(200)
+                                ->placeholder('Not yet downloaded')
+                                ->columnSpanFull(),
                             TextEntry::make('image_url')
                                 ->label('Remote image URL')
                                 ->url(fn (string $state): string => $state)

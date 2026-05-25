@@ -392,8 +392,8 @@ Status: in progress. The first admin tranche implements separate editorial and
 redirect persistence, an editable Event resource with clearly separated source
 versus Cue-owned fields, read-only Performance and Price inspection, and Sync Run
 inspection with controlled catalogue/pricing triggers. The second tranche has added
-a live operations dashboard with catalogue and pricing health widgets. Media
-processing and remaining editorial workflow refinement continue in this phase.
+a live operations dashboard and queued image ingestion. Remaining editorial workflow
+refinement continues in this phase.
 
 Deliverables:
 
@@ -524,6 +524,10 @@ Phase 2 completed so far:
 16. Add `SyncRunResource` with controlled catalogue and pricing dispatch actions.
 17. Add `RedirectsRelationManager` for editorial slug change management.
 18. Add `CatalogueHealthWidget` and `PricingSyncHealthWidget` to the operations dashboard.
+19. Add `local_image_path` to `events` and `DownloadEventImageJob` for queued image ingestion.
+20. Process downloaded images with PHP GD (max 1400px wide, 85% JPEG) and store on the public disk.
+21. Dispatch image download jobs from `SyncCatalogueAction` after the transaction, only for new or changed image URLs.
+22. Show downloaded source image in `EventInfolist` (`ImageEntry`) and `EventsTable` (`ImageColumn`).
 
 Phase 2 first-tranche verification covers editorial edits without mutating synced
 event data, read-only performance/price inspection, event redirect management and
@@ -535,11 +539,16 @@ performance ratio, stale pricing count against the configured freshness threshol
 and last price sync state. Both widgets poll every 30 seconds and are backed by
 11 automated tests.
 
+Phase 2 image ingestion verification: `DownloadEventImageJob` downloads, resizes
+and stores Spektrix source images locally. HTTP failures and undecodable payloads
+are logged and skipped without failing the job. Dispatch is idempotent — jobs are
+only queued for events with a new or changed `image_url`. 7 automated tests cover
+download, JPEG output, silent skip on failure, and dispatch conditions.
+
 Next coding tranche:
 
-1. Implement queued image ingestion/optimisation behind the managed hero-image workflow.
-2. Refine editorial workflow, publication safeguards and redirect automation on slug changes.
-3. Review realistic imported events in Filament before committing to public templates.
+1. Refine editorial workflow, publication safeguards and redirect automation on slug changes.
+2. Review realistic imported events in Filament before committing to public templates.
 
 ## Operational Decisions
 

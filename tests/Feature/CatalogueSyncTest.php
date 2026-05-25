@@ -9,6 +9,12 @@ use App\Domains\Events\Models\Performance;
 use App\Domains\Events\Models\SyncRun;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Queue;
+
+beforeEach(function () {
+    // Prevent image download jobs from executing synchronously during sync tests.
+    Queue::fake();
+});
 
 test('it stores and updates a local catalogue idempotently', function () {
     Http::preventStrayRequests();

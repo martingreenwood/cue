@@ -7,6 +7,7 @@ namespace App\Filament\Resources\Events\Tables;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
 use Filament\Tables\Columns\IconColumn;
+use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 
@@ -16,6 +17,12 @@ class EventsTable
     {
         return $table
             ->columns([
+                ImageColumn::make('local_image_path')
+                    ->label('')
+                    ->disk('public')
+                    ->height(40)
+                    ->width(60)
+                    ->defaultImageUrl(null),
                 TextColumn::make('title')
                     ->label('Provider title')
                     ->searchable()

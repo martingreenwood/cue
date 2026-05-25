@@ -28,6 +28,7 @@ class Event extends Model
         'duration_minutes',
         'image_url',
         'thumbnail_url',
+        'local_image_path',
         'image_alt',
         'is_on_sale',
         'first_performance_at',
