@@ -571,8 +571,12 @@ remains null for all because no Horizon worker has been running locally since th
 migration was added. Running `composer run dev` and re-syncing will populate these.
 
 Booking handoff: 0 of 729 performances have a `web_id`. The `apitesting` demo
-client does not populate `webInstanceId`. Real client data should be verified before
-Phase 3 booking handoff links are finalised.
+client does not populate `webInstanceId`. Spektrix docs confirm `ChooseSeats.aspx`
+accepts either `WebInstanceId` (our `web_id`) or `EventInstanceId` (the integer
+prefix of our `external_id`, e.g. `112659AKSS...` → `112659`). Cue will use
+`web_id` when set, falling back to `(int) $external_id`. The iframe URL uses a
+different base path to the API URL; `SPEKTRIX_IFRAME_BASE_URL` has been added to
+config to support custom client domains.
 
 Event title quality: several test events use `->` in titles (e.g. "Aldwych Theatre
 -> Release Rules 02"). Slug generation handles this correctly (stripped to hyphens).
@@ -597,7 +601,8 @@ Accepted now:
 
 | Decision | Reason |
 | --- | --- |
-| Blade, Livewire and Tailwind for public UI | Server rendering and progressive enhancement suit performance, SEO and accessibility goals. |
+|| Blade, Livewire and Tailwind for public UI | Server rendering and progressive enhancement suit performance, SEO and accessibility goals. |
+|| Spektrix booking handoff via ChooseSeats.aspx | Cue hands off to the Spektrix iframe using `WebInstanceId` (web_id) where set, falling back to `EventInstanceId` (integer prefix of external_id). Payment processing remains in Spektrix. |
 | Filament for internal tools only | Keeps public architecture independent from admin framework internals. |
 | Valkey through Laravel Redis support for queues/cache/session | Supports Horizon and production-style local operations. |
 | Horizon from the first sync job | External integrations require retries, failure visibility and throughput monitoring. |

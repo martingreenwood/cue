@@ -22,6 +22,7 @@ return [
     'providers' => [
         'spektrix' => [
             'base_url' => env('SPEKTRIX_API_BASE_URL'),
+            'iframe_base_url' => env('SPEKTRIX_IFRAME_BASE_URL'),
             'connect_timeout' => (int) env('SPEKTRIX_CONNECT_TIMEOUT', 5),
             'timeout' => (int) env('SPEKTRIX_TIMEOUT', 20),
         ],
