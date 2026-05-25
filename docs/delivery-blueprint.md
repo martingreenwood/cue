@@ -1,0 +1,538 @@
+# Cue Delivery Blueprint
+
+## Purpose
+
+This document guides Cue from an early Laravel foundation to a production-ready
+theatre website platform. It records the first product boundary, architectural
+decisions, delivery milestones and release gates so implementation remains focused
+and reviewable.
+
+This is a living delivery document. It should change when a product decision,
+external integration constraint or production requirement changes. It should not
+become a catalogue of speculative future features.
+
+## Product Definition
+
+Cue is a fast, accessible and editorially capable website platform for theatres and
+live event organisations. It connects to ticketing providers, initially Spektrix,
+while owning the public website experience and locally stored catalogue content.
+
+Cue initially solves:
+
+- reliable catalogue synchronisation from Spektrix;
+- local management of events, performances, display pricing and event imagery;
+- server-rendered public listings and event pages;
+- clear booking handoff into Spektrix purchase flows;
+- admin visibility into imports, failures and editorial overrides.
+
+Cue does not initially solve:
+
+- multi-tenant hosting;
+- a generic plugin marketplace;
+- a visual page builder;
+- customer accounts or complete checkout replacement;
+- multiple ticketing providers in production;
+- distributed services or event-driven infrastructure beyond Laravel queues.
+
+The architecture must allow those ideas to be reconsidered later without paying
+their complexity cost now.
+
+## Verified Baseline
+
+Baseline recorded on 2026-05-25:
+
+| Area | Current State |
+| --- | --- |
+| Framework | Laravel 13.11.2 on PHP 8.4.21 via Herd |
+| Admin UI | Filament 5.6.5 installed; starter admin panel exists |
+| Reactive UI | Livewire 4.3.0 installed |
+| Frontend build | Tailwind CSS 4.3.0 and Vite 8.0.14 |
+| Queues | Horizon 5.47.0 installed; local queue connection is Redis/Valkey |
+| Cache/session | Redis/Valkey locally |
+| Local persistence | PostgreSQL |
+| Testing | Pest 4.7.0 |
+| Code style | Pint 1.29.1 |
+| Static analysis | Larastan 3.9.6 with `phpstan.neon.dist` |
+| Existing application | Laravel starter homepage and starter Filament panel only |
+
+Local foundations already completed:
+
+- `composer run dev` starts Horizon, the scheduler, Pail and Vite;
+- `horizon:snapshot` is scheduled every five minutes for metrics;
+- Valkey responds to Laravel's Redis-compatible configuration;
+- PostgreSQL is the local relational database baseline before domain migrations;
+- the initial fast Pest harness remains isolated on in-memory SQLite, with PostgreSQL integration coverage added when database-specific behaviour is introduced;
+- static analysis and test commands are available.
+
+## Integration Findings
+
+### Lessons From WPSPX
+
+The legacy WPSPX plugin is a behavioural reference, not an implementation base.
+It established the important theatre concepts:
+
+| WPSPX / Spektrix Concept | Cue Domain Language |
+| --- | --- |
+| Spektrix event / WordPress show | Event |
+| Spektrix instance | Performance |
+| Instance price list | Performance pricing snapshot |
+| Instance status | Availability snapshot or live availability |
+| Remote event image | Managed event media |
+| Spektrix iframe URL | Booking handoff |
+
+WPSPX retrieved API resources, stored JSON cache files, mapped Spektrix events to
+WordPress content, and rendered public pages alongside purchase iframe handoff.
+Cue should keep the useful user journey while replacing global configuration,
+file-based caching and WordPress-coupled content storage.
+
+WPSPX displayed a performance's lowest raw price as its "From" price. That is not
+a reliable public pricing rule: the Spektrix demo client includes a performance
+whose default Full Price tickets range from GBP 20 to GBP 40, while Student and
+Over 60 prices fall to GBP 15. Cue must not advertise a concession or otherwise
+restricted price as the headline price unless the display policy explicitly allows
+it.
+
+### Spektrix API Boundary
+
+Spektrix API v3 supports Web/Public, Agent and System Owner modes. Public event and
+instance catalogue data is available in Web/Public mode without authentication.
+System Owner or Agent calls require signed authentication and are appropriate only
+where restricted functionality is required.
+
+Spektrix also recommends cached server-side retrieval for data that changes
+infrequently, including events and instances. This aligns with Cue's core rule:
+public page rendering must use normalised local data rather than depend on live API
+availability.
+
+Initial integration boundary:
+
+- Sync public events and performances server-side from API v3 Web/Public mode.
+- Sync current public performance price lists into local, timestamped price records.
+- Persist remote identifiers and original payload fragments needed for diagnosis.
+- Treat pricing as freshness-sensitive catalogue data: public rendering reads local
+  records, while regular refreshes capture price changes including dynamic pricing.
+- Treat availability as a separate real-time concern, with optional short-lived
+  cached snapshots; a stored price does not claim that a seat at that price remains
+  available.
+- Hand off bookings to supported Spektrix web purchase journeys initially.
+- Do not implement authenticated customer, basket or order operations in the first release slice.
+
+Reference material:
+
+- [Spektrix API v3 Overview](https://integrate.spektrix.com/docs/API3)
+- [Spektrix API Authentication](https://integrate.spektrix.com/docs/authentication)
+- [Filtering Events and Instances](https://integrate.spektrix.com/docs/apieventfiltering)
+- [Spektrix API v3 Demo Endpoint Index](https://system.spektrix.com/apitesting/api/v3/Help)
+
+## Architecture
+
+### Design Rules
+
+- Use generic domain language throughout Cue.
+- Keep Spektrix-specific request and response details inside infrastructure code.
+- Make locally persisted data the source for public event rendering.
+- Keep Filament resource and page classes limited to admin presentation and action dispatch.
+- Put orchestration in actions and external access behind contracts.
+- Use queued jobs for all external synchronisation work.
+- Make imports idempotent, retry-safe and observable.
+- Prefer one clear implementation for the first provider over premature abstraction.
+
+### Proposed Module Layout
+
+```text
+app/
+├── Domains/
+│   ├── Events/
+│   │   ├── Actions/
+│   │   ├── Data/
+│   │   ├── Jobs/
+│   │   └── Models/
+│   └── Ticketing/
+│       ├── Contracts/
+│       └── Data/
+├── Infrastructure/
+│   └── Ticketing/
+│       └── Spektrix/
+├── Filament/
+│   ├── Pages/
+│   ├── Resources/
+│   └── Widgets/
+└── Http/
+    └── Controllers/
+```
+
+Only create folders as their first implemented classes require them. The layout is
+a direction, not a requirement to generate empty architecture.
+
+### Core Boundaries
+
+`TicketingProvider`
+
+- Fetches provider event, performance and pricing catalogue data as Cue DTOs.
+- Does not persist Eloquent models.
+- Does not know about public views or Filament.
+
+`SpektrixTicketingProvider`
+
+- Builds and executes Spektrix API v3 requests.
+- Maps provider payloads to generic DTOs.
+- Handles transport errors, timeouts and provider diagnostics.
+
+`SyncCatalogueAction`
+
+- Performs idempotent persistence of event and performance data.
+- Records sync outcomes and dispatches any follow-up work.
+- Operates on generic ticketing DTOs rather than raw Spektrix payloads.
+
+`SyncPerformancePricesAction`
+
+- Fetches current price lists only for relevant future/on-sale performances.
+- Stores price entries and display aggregates idempotently with a captured timestamp.
+- Computes display values from an explicit eligibility policy, never an unqualified
+  raw minimum.
+
+Queued sync jobs
+
+- Initiates catalogue or pricing sync through the relevant action.
+- Has explicit timeout, retries, backoff and failed handling.
+- Is tagged for Horizon operations visibility.
+
+Public event controllers
+
+- Query published local records and return Blade views.
+- Never call Spektrix.
+
+Filament operations tooling
+
+- Dispatches sync jobs and displays recorded outcomes.
+- Does not contain integration logic.
+
+## Initial Data Model
+
+The first implementation should introduce only records necessary to render and
+operate the event catalogue.
+
+### Events
+
+Minimum responsibilities:
+
+- generic identity and route slug;
+- provider identifier and provider type;
+- title and descriptions;
+- sale and publication state;
+- remote image metadata pending media download;
+- first and last known performance timestamps;
+- SEO/editorial override fields only when the public page requires them.
+
+### Performances
+
+Minimum responsibilities:
+
+- belonging to an event;
+- provider identifier;
+- start datetime and web sale window where available;
+- sale/cancellation status;
+- booking handoff identifier;
+- provider payload metadata needed for safe resync or diagnostics.
+
+### Performance Prices
+
+Minimum responsibilities:
+
+- belonging to a performance and retaining the provider price identifier;
+- ticket type and price band remote identifiers and public names;
+- amount stored as currency minor units with an explicit currency;
+- provider flags needed for display policy, including band-default status and
+  dynamic-pricing eligibility where supplied;
+- captured/synchronised timestamp and source payload for diagnosis;
+- derived per-performance display values, such as `standard_from_price`, only
+  after the rule selecting eligible ticket types is agreed.
+
+Price definitions and seat availability must remain distinct. Price entries are
+locally synced catalogue data. A future availability snapshot may say whether
+inventory is currently purchasable, but Spektrix remains authoritative at booking
+time for both availability and the transaction's final price.
+
+### Sync Runs
+
+Minimum responsibilities:
+
+- sync type and provider;
+- queued, running, successful or failed status;
+- start/end timestamps and duration;
+- imported/updated/failed counts;
+- failure message and diagnostic context without secrets.
+
+### Media
+
+Do not build a full media library first. Begin with remote event image fields and
+then add queued download/optimisation once event sync and rendering are proven.
+
+## Delivery Roadmap
+
+### Phase 0: Foundation
+
+Goal: establish a dependable development and operational baseline.
+
+Status: largely complete.
+
+Deliverables:
+
+- Laravel, Filament, Livewire, Tailwind and Horizon installed;
+- Valkey-backed queues/cache/sessions locally;
+- scheduler-driven Horizon metrics;
+- Pint, Pest and Larastan verification;
+- architecture and delivery blueprint.
+
+Exit criteria:
+
+- `composer run dev` starts supporting processes successfully.
+- `composer analyse` and `php artisan test --compact` pass.
+- The first implementation slice is agreed and scoped.
+
+### Phase 1: Catalogue Sync Foundation
+
+Goal: store Spektrix public events and performances locally through a robust queued process.
+
+Status: implemented and verified against the public `apitesting` client; operational
+admin surfaces remain in a later phase.
+
+Deliverables:
+
+- provider configuration for a single Spektrix client;
+- generic ticketing contract and event/performance DTOs;
+- Spektrix public catalogue adapter;
+- event, performance and sync run migrations/models/factories;
+- sync action and Horizon-observable queued job;
+- manual Artisan sync entry point or dispatch command;
+- provider mapping, persistence and queue tests.
+
+Quality requirements:
+
+- no API call from public rendering;
+- explicit HTTP timeouts and retry behaviour;
+- idempotent repeated imports;
+- unique provider identifiers enforced in persistence;
+- failure status captured without exposing credentials;
+- queue timeout below Horizon timeout below queue `retry_after`.
+
+Exit criteria:
+
+- a recorded fixture or mocked Spektrix payload imports successfully;
+- repeat sync updates records without duplication;
+- failures are visible through a sync run record and Horizon;
+- automated tests and static analysis pass.
+
+### Phase 1B: Pricing Foundation
+
+Goal: store and display meaningful performance pricing without implying unavailable
+inventory or misleading audiences with ineligible minimum prices.
+
+Deliverables:
+
+- generic price DTOs and provider contract capability;
+- Spektrix `instances/{id}/price-list` mapping and fixture coverage;
+- performance price persistence in minor currency units with sync timestamps;
+- queued, idempotent price refresh for relevant future/on-sale performances;
+- display price policy supporting an initial standard/default "from" price;
+- dynamic-pricing refresh cadence and stale-price behaviour recorded in configuration;
+- tests proving concession prices are not automatically presented as standard prices.
+
+Quality requirements:
+
+- public pages never request price lists directly from Spektrix;
+- amounts are stored without floating-point arithmetic;
+- price data has an observable freshness timestamp;
+- displayed language distinguishes current display pricing from live availability;
+- booking flows treat Spektrix as final price authority.
+
+Exit criteria:
+
+- demo price lists import idempotently and retain bands/ticket types correctly;
+- a dynamically eligible performance can be refreshed without catalogue resync;
+- headline prices follow the agreed display policy;
+- stale or failed price sync behaviour is visible and tested.
+
+### Phase 2: Public Event Experience
+
+Goal: prove the locally synced catalogue creates a fast usable theatre website journey.
+
+Precondition: the pricing foundation is complete, or public pages ship without
+advertised prices.
+
+Deliverables:
+
+- public event listing route and server-rendered Blade view;
+- event detail page with performance selection;
+- clearly labelled locally sourced performance prices with freshness-aware fallback;
+- responsive and accessible event presentation;
+- booking handoff link/button using persisted provider data;
+- basic metadata, canonical URLs and empty/sold-out states;
+- feature tests for published visibility and page rendering.
+
+Exit criteria:
+
+- pages render with the ticketing API unavailable;
+- accessible keyboard and screen-reader paths are checked;
+- key pages meet agreed performance targets;
+- booking handoff has been tested against an approved Spektrix client/test setup.
+
+### Phase 3: Images And Editorial Control
+
+Goal: move event presentation beyond remotely owned imagery and raw ticketing copy.
+
+Deliverables:
+
+- queued image downloads and optimisation;
+- local storage strategy and image variants;
+- editorial overrides for descriptions, imagery and SEO fields;
+- Filament event management views that clearly distinguish synced and overridden data;
+- cache invalidation on publishable changes.
+
+Exit criteria:
+
+- public pages avoid remote image dependencies for synced media;
+- editors can alter allowed fields without corrupting provider sync;
+- image work is retry-safe and operationally visible.
+
+### Phase 4: Operations And Availability
+
+Goal: provide the operational confidence required for launch.
+
+Deliverables:
+
+- Filament sync dashboard, manual trigger and failure detail views;
+- last successful sync visibility and alerts for stale data;
+- availability approach validated and implemented where product needs it;
+- cache warming and scheduled sync policy;
+- diagnostics, logging and failure recovery documentation.
+
+Exit criteria:
+
+- sync failure and stale catalogue scenarios are demonstrably recoverable;
+- operations users know how to diagnose and rerun imports;
+- real-time calls are limited to justified transactional or availability use cases.
+
+### Phase 5: Production Readiness And Launch
+
+Goal: deploy a secure, observable and maintainable production vertical slice.
+
+Deliverables:
+
+- production database, Redis-compatible service and Horizon worker configuration;
+- environment and secrets management;
+- backups, error tracking, logging and alerting;
+- CI quality gates for tests, formatting and static analysis;
+- accessibility, SEO, performance and security review;
+- deployment and rollback runbook;
+- content migration and launch checklist.
+
+Exit criteria:
+
+- production-like staging has passed the full event-to-booking journey;
+- all required monitoring and restore procedures are tested;
+- launch owners approve the operational runbook and acceptance checklist.
+
+## First Engineering Tranche
+
+Completed:
+
+1. Add `config/ticketing.php` and environment keys for one Spektrix public client URL.
+2. Create a generic ticketing provider contract and readonly event/performance DTOs.
+3. Implement a Spektrix adapter for public event and instance retrieval.
+4. Add event, performance and sync run storage with appropriate unique indexes.
+5. Add an idempotent queued catalogue sync job and action.
+6. Test API payload mapping, repeated sync and failure recording.
+
+Live development verification imported 42 events and 729 performances from the
+public `apitesting` client; a second import retained the same record counts.
+
+Next coding tranche:
+
+1. Add price list DTOs, persistence and a queued performance pricing sync.
+2. Define and test the initial headline price policy using standard/default prices.
+3. Record dynamic pricing freshness and stale-state handling.
+4. Build server-rendered public event pages from the priced local catalogue.
+
+## Operational Decisions
+
+Accepted now:
+
+| Decision | Reason |
+| --- | --- |
+| Blade, Livewire and Tailwind for public UI | Server rendering and progressive enhancement suit performance, SEO and accessibility goals. |
+| Filament for internal tools only | Keeps public architecture independent from admin framework internals. |
+| Valkey through Laravel Redis support for queues/cache/session | Supports Horizon and production-style local operations. |
+| Horizon from the first sync job | External integrations require retries, failure visibility and throughput monitoring. |
+| Local catalogue persistence | Protects page availability and performance from provider downtime and latency. |
+| Spektrix implemented as an adapter | Prevents external provider naming from shaping Cue's domain. |
+| Local price-list snapshots with regular refresh | Makes event pages fast while acknowledging dynamic pricing and leaving final transaction pricing to Spektrix. |
+| No raw-minimum "cheapest" headline | Avoids misrepresenting concession or restricted prices as generally available ticket prices. |
+
+Deferred decisions:
+
+| Decision | Trigger For Resolving |
+| --- | --- |
+| Production PostgreSQL hosting target | Before staging infrastructure is provisioned. |
+| Authenticated Spektrix mode and secret management | When a feature requires restricted API calls. |
+| Availability freshness strategy | Before public messaging claims tickets or price bands are currently available. |
+| Final display-price eligibility policy | Before public pages advertise "from" pricing. |
+| Pricing refresh SLA for dynamically priced performances | Before priced pages are enabled outside development. |
+| Media processing implementation | Once provider image shapes and delivery requirements are tested. |
+| CMS breadth beyond event overrides | After the catalogue vertical slice is usable. |
+
+## Production Gates
+
+### Functional
+
+- Public event catalogue and detail pages meet approved requirements.
+- Booking handoff works for supported event/performance states.
+- Editorial overrides behave predictably across resyncs.
+
+### Reliability
+
+- Sync jobs are idempotent and retry-safe.
+- Failed imports are observable and recoverable.
+- Provider outage does not remove existing published catalogue pages.
+- Backups and restoration are tested.
+
+### Security And Privacy
+
+- Provider credentials, if introduced, remain server-side and outside logs.
+- Admin access is authorised and audited as necessary.
+- Customer or transactional data is not stored until its handling has been designed and reviewed.
+
+### Quality
+
+- Pest tests pass in CI.
+- Pint formatting is enforced.
+- Larastan passes at the agreed analysis level.
+- Accessibility, SEO and performance acceptance checks pass.
+
+### Operations
+
+- Horizon and scheduled sync processes run in production.
+- Monitoring covers failed jobs, stale syncs and application exceptions.
+- Deployment, rollback and incident recovery procedures are documented.
+
+## Open Product Questions
+
+These questions should be resolved as their answers become necessary, rather than
+blocking catalogue sync:
+
+1. Which first theatre or Spektrix test client supplies realistic fixture data?
+2. What editorial fields must override ticketing-supplied content at launch?
+3. Does launch require live seat/availability messaging or only booking handoff?
+4. What event taxonomy and filtering is essential for the first public listing?
+5. What are the initial accessibility and page performance acceptance targets?
+6. Which staging and production hosting target will operate Horizon and persistent services?
+7. Should headline prices represent only default/full-price tickets, or may
+   explicitly labelled concession prices appear in event cards and detail pages?
+8. What maximum age is acceptable for a displayed price on dynamically priced
+   performances before the UI suppresses it or marks it as indicative?
+
+## Working Rule
+
+Each phase should end with working software, automated verification and updated
+decisions. The immediate success measure is not the size of the architecture; it is
+a resilient, locally rendered event journey powered by repeatable Spektrix sync.
