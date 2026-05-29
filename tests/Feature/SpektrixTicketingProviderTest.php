@@ -188,12 +188,6 @@ test('it builds provider-isolated customer authentication and basket journey sur
         'https://system.spektrix.com/apitesting/api/v3/customer/send-magic-link',
     )->and($provider->customerAuthentication()?->authenticateMagicLinkUrl)->toBe(
         'https://system.spektrix.com/apitesting/api/v3/customer/authenticate-magic-link',
-    )->and($provider->customerJourney(CustomerJourney::Basket)?->iframeUrl)->toBe(
-        'https://system.spektrix.com/apitesting/website/Basket2.aspx',
-    )->and($provider->customerJourney(CustomerJourney::Basket)?->embedScriptUrl)->toBe(
-        'https://system.spektrix.com/apitesting/website/scripts/integrate.js',
-    )->and($provider->customerJourney(CustomerJourney::Checkout)?->iframeUrl)->toBe(
-        'https://system.spektrix.com/apitesting/website/secure/Checkout.aspx',
     )->and($provider->customerJourney(CustomerJourney::PasswordReset)?->iframeUrl)->toBe(
         'https://system.spektrix.com/apitesting/website/Secure/SetPassword.aspx',
     )->and($provider->customerJourney(CustomerJourney::Redeem)?->iframeUrl)->toBe(
@@ -216,10 +210,6 @@ test('it keeps customer authentication and journey surfaces on the confirmed cus
         'https://tickets.newwolseytheatre.co.uk/wolsey/api/v3/customer',
     )->and($provider->customerAuthentication()?->sendMagicLinkUrl)->toBe(
         'https://tickets.newwolseytheatre.co.uk/wolsey/api/v3/customer/send-magic-link',
-    )->and($provider->customerJourney(CustomerJourney::Basket)?->iframeUrl)->toBe(
-        'https://tickets.newwolseytheatre.co.uk/wolsey/website/Basket2.aspx',
-    )->and($provider->customerJourney(CustomerJourney::Checkout)?->iframeUrl)->toBe(
-        'https://tickets.newwolseytheatre.co.uk/wolsey/website/secure/Checkout.aspx',
     )->and($provider->customerJourney(CustomerJourney::PasswordReset)?->iframeUrl)->toBe(
         'https://tickets.newwolseytheatre.co.uk/wolsey/website/Secure/SetPassword.aspx',
     )->and($provider->customerJourney(CustomerJourney::Redeem)?->iframeUrl)->toBe(

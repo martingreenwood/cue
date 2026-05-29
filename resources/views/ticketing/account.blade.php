@@ -339,12 +339,15 @@
                                     <p data-account-password-recovery-error tabindex="-1" role="alert" hidden class="border border-[#fdf7ee]/20 bg-[#fdf7ee]/10 px-4 py-3 text-sm leading-6 text-[#fdf7ee]">
                                         We could not send a reset link. Please check your email address and try again.
                                     </p>
-                                    <div class="flex flex-wrap items-center gap-4">
+                    <div class="flex flex-wrap items-center gap-4">
                                         <button type="submit" data-account-password-recovery-submit class="inline-flex min-h-12 items-center justify-center bg-[#fdf7ee] px-6 text-sm font-semibold text-[#171511] transition hover:bg-[#e5c8b8] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#fdf7ee] disabled:cursor-wait disabled:opacity-70">
                                             Send password reset link
                                         </button>
                                     </div>
                                 </form>
+                                <p class="mt-4 text-sm text-[#e5c8b8]">
+                                    Prefer not to use email? <a href="{{ route('ticketing.login') }}" class="font-medium text-[#fdf7ee] underline underline-offset-4 hover:text-[#e5c8b8] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#fdf7ee]">Email me a sign-in link instead</a>
+                                </p>
                             </div>
                         </section>
                     @else

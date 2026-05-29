@@ -26,6 +26,7 @@ Route::controller(PublicCustomerJourneyController::class)
         Route::get('/account/password-reset', 'passwordReset')->name('password-reset');
         Route::get('/basket', 'basket')->name('basket');
         Route::get('/checkout', 'checkout')->name('checkout');
+        Route::get('/checkout/confirmation', 'checkoutConfirmation')->name('checkout.confirmation');
         Route::get('/redeem', 'redeem')->name('redeem');
         Route::get('/renew', 'renew')->name('renew');
         Route::get('/blank', 'blank')->name('blank');

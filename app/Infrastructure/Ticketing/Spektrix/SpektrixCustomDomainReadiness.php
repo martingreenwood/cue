@@ -135,6 +135,12 @@ final class SpektrixCustomDomainReadiness
             changePasswordUrl: rtrim($baseUrl, '/').'/api/v3/customer/change-password',
             forgotPasswordUrl: rtrim($baseUrl, '/').'/api/v3/customer/forgot-password',
             deauthenticateUrl: rtrim($baseUrl, '/').'/api/v3/customer/deauthenticate',
+            basketUrl: rtrim($baseUrl, '/').'/api/v3/basket',
+            basketTicketsUrl: rtrim($baseUrl, '/').'/api/v3/basket/tickets',
+            basketMerchandiseUrl: rtrim($baseUrl, '/').'/api/v3/basket/merchandise',
+            stockItemsUrl: rtrim($baseUrl, '/').'/api/v3/stock-items',
+            initiateDirectPaymentUrl: rtrim($baseUrl, '/').'/api/v3/basket/initiate-direct-payment',
+            initiateCustomerPaymentUrl: rtrim($baseUrl, '/').'/api/v3/basket/initiate-customer-payment',
         );
     }
 

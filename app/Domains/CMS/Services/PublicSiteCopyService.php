@@ -24,7 +24,8 @@ final class PublicSiteCopyService
      *     footer_availability_notice: string,
      *     customer_logged_in_label: string,
      *     customer_logged_out_label: string,
-     *     customer_basket_label: string
+     *     customer_basket_label: string,
+     *     basket_membership_upsell: string
      * }
      */
     private const array Defaults = [
@@ -42,6 +43,7 @@ final class PublicSiteCopyService
         'customer_logged_in_label' => 'Signed in as',
         'customer_logged_out_label' => 'Log in',
         'customer_basket_label' => 'Basket',
+        'basket_membership_upsell' => 'If you hold a membership, log in and any eligible discounts will be applied to your order automatically.',
     ];
 
     public function current(): PublicSiteCopyData
@@ -63,6 +65,7 @@ final class PublicSiteCopyService
             customerLoggedInLabel: $this->value($settings?->customer_logged_in_label, 'customer_logged_in_label'),
             customerLoggedOutLabel: $this->value($settings?->customer_logged_out_label, 'customer_logged_out_label'),
             customerBasketLabel: $this->value($settings?->customer_basket_label, 'customer_basket_label'),
+            basketMembershipUpsell: $this->value($settings?->basket_membership_upsell, 'basket_membership_upsell'),
         );
     }
 
@@ -81,7 +84,8 @@ final class PublicSiteCopyService
      *     footer_availability_notice: string,
      *     customer_logged_in_label: string,
      *     customer_logged_out_label: string,
-     *     customer_basket_label: string
+     *     customer_basket_label: string,
+     *     basket_membership_upsell: string
      * }  $data
      */
     public function update(array $data): PublicSiteSetting

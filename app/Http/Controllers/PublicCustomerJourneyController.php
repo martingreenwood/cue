@@ -32,11 +32,6 @@ final class PublicCustomerJourneyController extends Controller
         return $this->renderJourney(CustomerJourney::PasswordReset);
     }
 
-    public function checkout(): View
-    {
-        return $this->renderJourney(CustomerJourney::Checkout);
-    }
-
     public function redeem(): View
     {
         return $this->renderJourney(CustomerJourney::Redeem);
@@ -89,7 +84,44 @@ final class PublicCustomerJourneyController extends Controller
 
     public function basket(): View
     {
-        return $this->renderJourney(CustomerJourney::Basket);
+        $customerSession = $this->ticketingProvider->customerSession();
+
+        if ($customerSession === null) {
+            throw new NotFoundHttpException;
+        }
+
+        return view('ticketing.basket', [
+            'siteCopy' => $this->publicSiteCopy->current(),
+            'customerSession' => $customerSession,
+        ]);
+    }
+
+    public function checkout(): View
+    {
+        $customerSession = $this->ticketingProvider->customerSession();
+
+        if ($customerSession === null) {
+            throw new NotFoundHttpException;
+        }
+
+        return view('ticketing.checkout', [
+            'siteCopy' => $this->publicSiteCopy->current(),
+            'customerSession' => $customerSession,
+        ]);
+    }
+
+    public function checkoutConfirmation(): View
+    {
+        $customerSession = $this->ticketingProvider->customerSession();
+
+        if ($customerSession === null) {
+            throw new NotFoundHttpException;
+        }
+
+        return view('ticketing.checkout-confirmation', [
+            'siteCopy' => $this->publicSiteCopy->current(),
+            'customerSession' => $customerSession,
+        ]);
     }
 
     public function blank(): View

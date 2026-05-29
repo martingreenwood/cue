@@ -1635,6 +1635,763 @@ for (const form of document.querySelectorAll('[data-customer-magic-link-request-
     });
 }
 
+// Basket page
+
+const formatBasketMoney = (amount) => {
+    if (amount === null || amount === undefined || amount === '') {
+        return '';
+    }
+
+    const num = Number(amount);
+
+    if (Number.isNaN(num)) {
+        return String(amount);
+    }
+
+    return `£${num.toFixed(2)}`;
+};
+
+const basketVal = (obj, key) => {
+    const value = obj?.[key] ?? obj?.[key.charAt(0).toUpperCase() + key.slice(1)];
+
+    return value !== undefined && value !== null ? value : null;
+};
+
+const renderBasketSavings = (basket, section) => {
+    const savingsEl = section.querySelector('[data-basket-savings]');
+    const offersEl = section.querySelector('[data-basket-offers]');
+    const promoInput = section.querySelector('[name="promoCode"]');
+
+    if (savingsEl === null) {
+        return;
+    }
+
+    const potentialOffers = basketVal(basket, 'potentialOffers') || [];
+    const multibuyOffers = basketVal(basket, 'multibuyOffers') || [];
+    const appliedOffers = basketVal(basket, 'offers') || [];
+    const promoCode = basketVal(basket, 'promoCode');
+    const hasOffers = (Array.isArray(potentialOffers) && potentialOffers.length > 0)
+        || (Array.isArray(multibuyOffers) && multibuyOffers.length > 0)
+        || (Array.isArray(appliedOffers) && appliedOffers.length > 0)
+        || (typeof promoCode === 'string' && promoCode !== '');
+
+    if (promoInput !== null && typeof promoCode === 'string' && promoCode !== '') {
+        promoInput.value = promoCode;
+    }
+
+    if (!hasOffers) {
+        savingsEl.hidden = true;
+
+        return;
+    }
+
+    savingsEl.hidden = false;
+
+    if (offersEl === null) {
+        return;
+    }
+
+    offersEl.replaceChildren();
+
+    if (Array.isArray(appliedOffers) && appliedOffers.length > 0) {
+        const appliedHeading = document.createElement('p');
+        appliedHeading.className = 'font-medium text-[#171511]';
+        appliedHeading.textContent = 'Applied offers';
+        offersEl.appendChild(appliedHeading);
+
+        for (const offer of appliedOffers) {
+            const p = document.createElement('p');
+            p.textContent = basketVal(offer, 'name') || 'Offer applied';
+            offersEl.appendChild(p);
+        }
+    }
+
+    if (Array.isArray(potentialOffers) && potentialOffers.length > 0) {
+        const potentialHeading = document.createElement('p');
+        potentialHeading.className = 'mt-3 font-medium text-[#171511]';
+        potentialHeading.textContent = 'Add more tickets to qualify for';
+        offersEl.appendChild(potentialHeading);
+
+        for (const offer of potentialOffers) {
+            const p = document.createElement('p');
+            p.textContent = basketVal(offer, 'name') || 'Available offer';
+            offersEl.appendChild(p);
+        }
+    }
+};
+
+const renderBasketMembershipUpsell = (basket, section) => {
+    const upsell = section.querySelector('[data-basket-membership-upsell]');
+    const copy = section.querySelector('[data-basket-membership-upsell-copy]');
+    const loginLink = section.querySelector('[data-basket-login-url]');
+
+    if (upsell === null) {
+        return;
+    }
+
+    const customer = basketVal(basket, 'customer');
+    const isLoggedIn = customer !== null && typeof customer === 'object' && basketVal(customer, 'id') !== null;
+
+    if (isLoggedIn) {
+        upsell.hidden = true;
+
+        return;
+    }
+
+    upsell.hidden = false;
+
+    if (copy !== null) {
+        copy.textContent = section.dataset.membershipUpsell || '';
+    }
+
+    if (loginLink !== null) {
+        loginLink.href = section.dataset.loginUrl || '#';
+    }
+};
+
+const renderBasketTickets = (basket, section) => {
+    const container = section.querySelector('[data-basket-tickets]');
+
+    if (container === null) {
+        return;
+    }
+
+    const tickets = basketVal(basket, 'tickets') || [];
+    container.replaceChildren();
+
+    if (!Array.isArray(tickets) || tickets.length === 0) {
+        const p = document.createElement('p');
+        p.className = 'text-sm text-[#5d5549]';
+        p.textContent = 'No tickets in basket.';
+        container.appendChild(p);
+
+        return;
+    }
+
+    for (const ticket of tickets) {
+        const id = basketVal(ticket, 'id');
+        const event = basketVal(ticket, 'event');
+        const instance = basketVal(ticket, 'instance');
+        const ticketType = basketVal(ticket, 'type') || basketVal(ticket, 'ticketType');
+        const total = basketVal(ticket, 'total');
+        const discount = basketVal(ticket, 'discount');
+        const offer = basketVal(ticket, 'offer');
+
+        const eventName = basketVal(event, 'name') || 'Event';
+        const instanceStart = basketVal(instance, 'start') || basketVal(instance, 'startUtc') || '';
+        const typeName = basketVal(ticketType, 'name') || 'Ticket';
+
+        const card = document.createElement('div');
+        card.className = 'border border-[#171511]/10 bg-white p-5';
+
+        const header = document.createElement('div');
+        header.className = 'flex items-start justify-between gap-4';
+
+        const info = document.createElement('div');
+        info.className = 'min-w-0';
+
+        const nameEl = document.createElement('p');
+        nameEl.className = 'font-semibold text-[#171511] truncate';
+        nameEl.textContent = eventName;
+        info.appendChild(nameEl);
+
+        if (instanceStart !== '') {
+            const dateEl = document.createElement('p');
+            dateEl.className = 'mt-1 text-sm text-[#5d5549]';
+            dateEl.textContent = instanceStart;
+            info.appendChild(dateEl);
+        }
+
+        const typeEl = document.createElement('p');
+        typeEl.className = 'mt-1 text-sm text-[#5d5549]';
+        typeEl.textContent = typeName;
+        info.appendChild(typeEl);
+
+        if (offer !== null && basketVal(offer, 'name') !== null) {
+            const offerEl = document.createElement('p');
+            offerEl.className = 'mt-1 text-xs text-[#a4432e]';
+            offerEl.textContent = basketVal(offer, 'name') || '';
+            info.appendChild(offerEl);
+        }
+
+        const priceEl = document.createElement('div');
+        priceEl.className = 'shrink-0 text-right';
+
+        const totalEl = document.createElement('p');
+        totalEl.className = 'font-semibold text-[#171511]';
+        totalEl.textContent = total !== null ? formatBasketMoney(total) : '';
+        priceEl.appendChild(totalEl);
+
+        if (discount !== null && Number(discount) > 0) {
+            const discountEl = document.createElement('p');
+            discountEl.className = 'mt-1 text-xs text-[#a4432e]';
+            discountEl.textContent = `Saving ${formatBasketMoney(discount)}`;
+            priceEl.appendChild(discountEl);
+        }
+
+        header.append(info, priceEl);
+        card.appendChild(header);
+
+        if (id !== null) {
+            const deleteButton = document.createElement('button');
+            deleteButton.type = 'button';
+            deleteButton.className = 'mt-4 inline-flex min-h-10 items-center border border-[#a4432e]/30 px-3 text-sm font-semibold text-[#7b3021] transition hover:bg-[#f5f0e8] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#a4432e] disabled:opacity-60';
+            deleteButton.textContent = 'Remove';
+            deleteButton.addEventListener('click', async () => {
+                if (!window.confirm('Remove this ticket from your basket?')) {
+                    return;
+                }
+
+                deleteButton.disabled = true;
+
+                const url = new URL(section.dataset.basketTicketsUrl);
+                url.searchParams.append('ticketIds[]', id);
+
+                try {
+                    const response = await providerDelete(url.toString());
+
+                    if (!response.ok && response.status !== 204) {
+                        throw new Error('Ticket removal failed.');
+                    }
+
+                    await reloadBasket(section);
+                } catch {
+                    deleteButton.textContent = 'Could not remove';
+                    deleteButton.disabled = false;
+                }
+            });
+            card.appendChild(deleteButton);
+        }
+
+        container.appendChild(card);
+    }
+};
+
+const renderBasketTotals = (basket, section) => {
+    const container = section.querySelector('[data-basket-totals]');
+
+    if (container === null) {
+        return;
+    }
+
+    container.replaceChildren();
+
+    const total = basketVal(basket, 'total');
+    const totalDiscount = basketVal(basket, 'totalDiscount');
+    const charges = basketVal(basket, 'charges') || [];
+
+    const rows = [];
+
+    if (Array.isArray(charges)) {
+        for (const charge of charges) {
+            const name = basketVal(charge, 'name') || basketVal(charge, 'description') || 'Charge';
+            const amount = basketVal(charge, 'amount') || basketVal(charge, 'total');
+
+            if (amount !== null) {
+                rows.push([name, formatBasketMoney(amount)]);
+            }
+        }
+    }
+
+    if (totalDiscount !== null && Number(totalDiscount) > 0) {
+        rows.push(['Total savings', `-${formatBasketMoney(totalDiscount)}`]);
+    }
+
+    for (const [label, value] of rows) {
+        const row = document.createElement('div');
+        row.className = 'flex justify-between py-1';
+
+        const labelEl = document.createElement('span');
+        labelEl.textContent = label;
+        const valueEl = document.createElement('span');
+        valueEl.textContent = value;
+
+        row.append(labelEl, valueEl);
+        container.appendChild(row);
+    }
+
+    if (total !== null) {
+        const totalRow = document.createElement('div');
+        totalRow.className = 'mt-3 flex justify-between border-t border-[#171511]/10 pt-3 font-semibold text-[#171511]';
+
+        const totalLabel = document.createElement('span');
+        totalLabel.textContent = 'Total';
+        const totalValue = document.createElement('span');
+        totalValue.textContent = formatBasketMoney(total);
+
+        totalRow.append(totalLabel, totalValue);
+        container.appendChild(totalRow);
+    }
+};
+
+const renderBasketMerchandise = (stockItems, section) => {
+    const merchandiseSection = section.querySelector('[data-basket-merchandise]');
+    const container = section.querySelector('[data-basket-merchandise-items]');
+
+    if (merchandiseSection === null || container === null) {
+        return;
+    }
+
+    const available = Array.isArray(stockItems)
+        ? stockItems.filter((item) => (basketVal(item, 'stockLevel') ?? 1) > 0)
+        : [];
+
+    if (available.length === 0) {
+        merchandiseSection.hidden = true;
+
+        return;
+    }
+
+    merchandiseSection.hidden = false;
+    container.replaceChildren();
+
+    const clientName = section.dataset.clientName || '';
+    const customDomain = section.dataset.customDomain || '';
+
+    for (const item of available) {
+        const id = basketVal(item, 'id');
+        const name = basketVal(item, 'name') || 'Merchandise';
+        const price = basketVal(item, 'price');
+        const imageUrl = basketVal(item, 'imageUrl') || basketVal(item, 'thumbnailUrl');
+
+        if (id === null) {
+            continue;
+        }
+
+        const card = document.createElement('div');
+        card.className = 'border border-[#171511]/10 bg-white p-4';
+
+        if (imageUrl !== null) {
+            const img = document.createElement('img');
+            img.src = imageUrl;
+            img.alt = name;
+            img.className = 'mb-3 h-32 w-full object-cover';
+            img.loading = 'lazy';
+            card.appendChild(img);
+        }
+
+        const nameEl = document.createElement('p');
+        nameEl.className = 'text-sm font-semibold text-[#171511]';
+        nameEl.textContent = name;
+        card.appendChild(nameEl);
+
+        if (price !== null) {
+            const priceEl = document.createElement('p');
+            priceEl.className = 'mt-1 text-sm text-[#5d5549]';
+            priceEl.textContent = formatBasketMoney(price);
+            card.appendChild(priceEl);
+        }
+
+        const component = document.createElement('spektrix-merchandise');
+        component.setAttribute('client-name', clientName);
+        component.setAttribute('merchandise-item-id', id);
+
+        if (customDomain !== '') {
+            component.setAttribute('custom-domain', customDomain);
+        }
+
+        const submitButton = document.createElement('button');
+        submitButton.setAttribute('data-submit-merchandise', '');
+        submitButton.className = 'mt-3 inline-flex min-h-10 w-full items-center justify-center bg-[#a4432e] px-4 text-sm font-semibold text-white transition hover:bg-[#873625] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#a4432e]';
+        submitButton.textContent = 'Add to basket';
+
+        const successEl = document.createElement('div');
+        successEl.setAttribute('data-success-container', '');
+        successEl.style.display = 'none';
+        successEl.className = 'mt-2 text-sm text-[#5d5549]';
+        successEl.textContent = 'Added to your basket.';
+
+        const failEl = document.createElement('div');
+        failEl.setAttribute('data-fail-container', '');
+        failEl.style.display = 'none';
+        failEl.className = 'mt-2 text-sm text-[#7b3021]';
+        failEl.textContent = 'Could not add to basket.';
+
+        component.append(submitButton, successEl, failEl);
+
+        component.addEventListener('success', () => {
+            void reloadBasket(section);
+        });
+
+        card.appendChild(component);
+        container.appendChild(card);
+    }
+};
+
+const renderBasket = (basket, stockItems, section) => {
+    const loading = section.querySelector('[data-basket-loading]');
+    const emptyEl = section.querySelector('[data-basket-empty]');
+    const contentEl = section.querySelector('[data-basket-content]');
+
+    if (loading !== null) {
+        loading.hidden = true;
+    }
+
+    const tickets = basketVal(basket, 'tickets') || [];
+    const isEmpty = !Array.isArray(tickets) || tickets.length === 0;
+
+    if (isEmpty) {
+        if (emptyEl !== null) {
+            emptyEl.hidden = false;
+        }
+
+        if (contentEl !== null) {
+            contentEl.hidden = true;
+        }
+
+        return;
+    }
+
+    if (emptyEl !== null) {
+        emptyEl.hidden = true;
+    }
+
+    if (contentEl !== null) {
+        contentEl.hidden = false;
+    }
+
+    renderBasketSavings(basket, section);
+    renderBasketMembershipUpsell(basket, section);
+    renderBasketTickets(basket, section);
+    renderBasketTotals(basket, section);
+    renderBasketMerchandise(stockItems, section);
+};
+
+const reloadBasket = async (section) => {
+    try {
+        const response = await providerGet(section.dataset.basketUrl);
+
+        if (!response.ok) {
+            throw new Error('Basket reload failed.');
+        }
+
+        renderBasket(await response.json(), null, section);
+    } catch {
+        // Silently retain current render; user can reload the page.
+    }
+};
+
+const hydrateBasket = async () => {
+    const section = document.querySelector('[data-customer-basket]');
+
+    if (section === null) {
+        return;
+    }
+
+    try {
+        const [basketResponse, stockResponse] = await Promise.all([
+            providerGet(section.dataset.basketUrl),
+            providerGet(section.dataset.stockItemsUrl),
+        ]);
+
+        if (!basketResponse.ok) {
+            throw new Error('Basket unavailable.');
+        }
+
+        const basket = await basketResponse.json();
+        const stockItems = stockResponse.ok ? await stockResponse.json() : [];
+
+        renderBasket(basket, stockItems, section);
+    } catch {
+        const loading = section.querySelector('[data-basket-loading]');
+        const errorEl = section.querySelector('[data-basket-error]');
+
+        if (loading !== null) {
+            loading.hidden = true;
+        }
+
+        if (errorEl !== null) {
+            errorEl.hidden = false;
+        }
+    }
+};
+
+void hydrateBasket();
+
+for (const form of document.querySelectorAll('[data-basket-promo-form]')) {
+    form.addEventListener('submit', async (event) => {
+        event.preventDefault();
+
+        const section = form.closest('[data-customer-basket]');
+        const submitButton = form.querySelector('[data-basket-promo-submit]');
+        const feedback = form.querySelector('[data-basket-promo-feedback]');
+        const errorMessage = form.querySelector('[data-basket-promo-error]');
+        const promoCode = form.elements.namedItem('promoCode')?.value?.trim() ?? '';
+
+        if (feedback !== null) {
+            feedback.hidden = true;
+        }
+
+        if (errorMessage !== null) {
+            errorMessage.hidden = true;
+        }
+
+        submitButton.disabled = true;
+
+        try {
+            const response = await providerPatch(section.dataset.basketUrl, { promoCode });
+
+            if (!response.ok) {
+                throw new Error('Applying promo code failed.');
+            }
+
+            renderBasket(await response.json(), null, section);
+
+            if (feedback !== null) {
+                feedback.textContent = promoCode !== '' ? 'Code applied.' : 'Code removed.';
+                feedback.hidden = false;
+            }
+        } catch {
+            if (errorMessage !== null) {
+                errorMessage.textContent = 'We could not apply that code. Please check it and try again.';
+                errorMessage.hidden = false;
+                errorMessage.focus();
+            }
+        } finally {
+            submitButton.disabled = false;
+        }
+    });
+}
+
+// Checkout page
+
+const initiateCheckout = async (section) => {
+    const paymentsEl = document.getElementById('spektrixPayments');
+    const paymentContainer = section.querySelector('[data-checkout-payment]');
+    const loadingEl = section.querySelector('[data-checkout-loading]');
+    const errorEl = section.querySelector('[data-checkout-error]');
+
+    if (paymentsEl === null || paymentContainer === null) {
+        return;
+    }
+
+    try {
+        let paymentToken = null;
+
+        const customerResponse = await providerGet(section.dataset.customerUrl);
+
+        if (customerResponse.ok) {
+            // Logged-in flow: resolve billing address, then initiate customer payment.
+            // billing-address-id is required by <spektrix-payments> for customer checkout.
+            // If no billing address can be resolved (CORS not yet configured, no addresses
+            // saved, or any other failure), fall back to direct payment so the component
+            // is always initialised correctly.
+            let billingAddressId = null;
+
+            try {
+                const addressResponse = await providerGet(section.dataset.addressesUrl);
+
+                if (addressResponse.ok) {
+                    const addresses = await addressResponse.json();
+                    const billing = Array.isArray(addresses)
+                        ? addresses.find((a) => basketVal(a, 'isBilling') === true) || addresses[0]
+                        : null;
+
+                    if (billing !== null && billing !== undefined) {
+                        billingAddressId = basketVal(billing, 'id');
+                    }
+                }
+            } catch {
+                // Address fetch blocked or failed — billingAddressId stays null.
+            }
+
+            if (billingAddressId !== null) {
+                // Customer payment with billing address.
+                const initiateResponse = await providerPost(section.dataset.initiateCustomerPaymentUrl);
+
+                if (!initiateResponse.ok) {
+                    throw new Error('Initiating customer payment failed.');
+                }
+
+                const data = await initiateResponse.json();
+                paymentToken = basketVal(data, 'paymentToken') || basketVal(data, 'token');
+
+                paymentsEl.setAttribute('billing-address-id', billingAddressId);
+                paymentsEl.setAttribute('store-card', 'true');
+            } else {
+                // No billing address available — use direct payment flow.
+                const initiateResponse = await providerPost(section.dataset.initiateDirectPaymentUrl);
+
+                if (!initiateResponse.ok) {
+                    throw new Error('Initiating direct payment failed.');
+                }
+
+                const data = await initiateResponse.json();
+                paymentToken = basketVal(data, 'paymentToken') || basketVal(data, 'token');
+            }
+        } else {
+            // Guest flow: direct payment initiation.
+            const initiateResponse = await providerPost(section.dataset.initiateDirectPaymentUrl);
+
+            if (!initiateResponse.ok) {
+                throw new Error('Initiating direct payment failed.');
+            }
+
+            const data = await initiateResponse.json();
+            paymentToken = basketVal(data, 'paymentToken') || basketVal(data, 'token');
+        }
+
+        if (paymentToken === null || paymentToken === '') {
+            throw new Error('No payment token received.');
+        }
+
+        paymentsEl.setAttribute('payment-token', paymentToken);
+
+        if (loadingEl !== null) {
+            loadingEl.hidden = true;
+        }
+
+        paymentContainer.hidden = false;
+    } catch {
+        if (loadingEl !== null) {
+            loadingEl.hidden = true;
+        }
+
+        if (errorEl !== null) {
+            errorEl.hidden = false;
+        }
+    }
+};
+
+const hydrateCheckout = async () => {
+    const section = document.querySelector('[data-customer-checkout]');
+
+    if (section === null) {
+        return;
+    }
+
+    const paymentsEl = document.getElementById('spektrixPayments');
+
+    if (paymentsEl === null) {
+        return;
+    }
+
+    const refusedEl = section.querySelector('[data-checkout-refused]');
+    const expiredEl = section.querySelector('[data-checkout-expired]');
+    const paymentContainer = section.querySelector('[data-checkout-payment]');
+    const retryButton = section.querySelector('[data-checkout-retry]');
+    const confirmationUrl = section.dataset.confirmationUrl || '/';
+
+    paymentsEl.addEventListener('onPaymentCompleted', (event) => {
+        const orderId = event?.detail?.orderId ?? '';
+        const url = new URL(confirmationUrl, window.location.origin);
+
+        if (orderId !== '') {
+            url.searchParams.set('orderId', orderId);
+        }
+
+        window.location.assign(url.toString());
+    });
+
+    paymentsEl.addEventListener('onPaymentRefused', () => {
+        if (paymentContainer !== null) {
+            paymentContainer.hidden = true;
+        }
+
+        if (refusedEl !== null) {
+            refusedEl.hidden = false;
+        }
+    });
+
+    paymentsEl.addEventListener('onPaymentNotFound', () => {
+        const basketUrl = section.dataset.basketUrlReturn || '/';
+        const url = new URL(basketUrl, window.location.origin);
+        url.searchParams.set('session_expired', '1');
+        window.location.assign(url.toString());
+    });
+
+    paymentsEl.addEventListener('onError', () => {
+        const loadingEl = section.querySelector('[data-checkout-loading]');
+        const errorEl = section.querySelector('[data-checkout-error]');
+
+        if (loadingEl !== null) {
+            loadingEl.hidden = true;
+        }
+
+        if (paymentContainer !== null) {
+            paymentContainer.hidden = true;
+        }
+
+        if (errorEl !== null) {
+            errorEl.hidden = false;
+        }
+    });
+
+    if (retryButton !== null) {
+        retryButton.addEventListener('click', async () => {
+            if (refusedEl !== null) {
+                refusedEl.hidden = true;
+            }
+
+            const loadingEl = section.querySelector('[data-checkout-loading]');
+
+            if (loadingEl !== null) {
+                loadingEl.hidden = false;
+            }
+
+            await initiateCheckout(section);
+        });
+    }
+
+    await initiateCheckout(section);
+};
+
+void hydrateCheckout();
+
+// Checkout confirmation page
+
+const hydrateCheckoutConfirmation = async () => {
+    const section = document.querySelector('[data-checkout-confirmation]');
+
+    if (section === null) {
+        return;
+    }
+
+    const loadingEl = section.querySelector('[data-confirmation-loading]');
+    const summaryEl = section.querySelector('[data-confirmation-summary]');
+    const detailsEl = section.querySelector('[data-confirmation-order-details]');
+
+    const orderId = new URLSearchParams(window.location.search).get('orderId');
+
+    if (orderId === null || orderId === '') {
+        if (loadingEl !== null) {
+            loadingEl.hidden = true;
+        }
+
+        return;
+    }
+
+    try {
+        const orderDetailUrl = section.dataset.ordersUrl
+            .replace('/customer/orders', '/orders');
+        const response = await providerGet(`${orderDetailUrl}/${encodeURIComponent(orderId)}`);
+
+        if (!response.ok) {
+            throw new Error('Loading order failed.');
+        }
+
+        const order = await response.json();
+
+        if (loadingEl !== null) {
+            loadingEl.hidden = true;
+        }
+
+        if (summaryEl !== null) {
+            summaryEl.hidden = false;
+        }
+
+        if (detailsEl !== null) {
+            renderOrderDetail(detailsEl, order);
+        }
+    } catch {
+        if (loadingEl !== null) {
+            loadingEl.hidden = true;
+        }
+    }
+};
+
+void hydrateCheckoutConfirmation();
+
 for (const form of document.querySelectorAll('[data-customer-magic-link-authentication-form]')) {
     form.addEventListener('submit', async (event) => {
         event.preventDefault();

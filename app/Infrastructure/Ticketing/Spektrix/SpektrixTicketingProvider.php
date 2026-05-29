@@ -85,8 +85,6 @@ final class SpektrixTicketingProvider implements TicketingProvider
         }
 
         $path = match ($journey) {
-            CustomerJourney::Basket => '/website/Basket2.aspx',
-            CustomerJourney::Checkout => '/website/secure/Checkout.aspx',
             CustomerJourney::PasswordReset => '/website/Secure/SetPassword.aspx',
             CustomerJourney::Redeem => '/website/secure/RedeemGift.aspx',
             CustomerJourney::Renew => '/website/Memberships.aspx',

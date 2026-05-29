@@ -129,6 +129,12 @@ class ContentStrings extends Page
                                 ->label('Basket count label')
                                 ->required()
                                 ->maxLength(255),
+                            Textarea::make('basket_membership_upsell')
+                                ->label('Basket membership upsell')
+                                ->helperText('Shown to signed-out visitors on the basket page. Links to the login page.')
+                                ->required()
+                                ->rows(2)
+                                ->columnSpanFull(),
                         ]),
                     ])
                     ->columnSpanFull(),
@@ -152,7 +158,8 @@ class ContentStrings extends Page
          *     footer_availability_notice: string,
          *     customer_logged_in_label: string,
          *     customer_logged_out_label: string,
-         *     customer_basket_label: string
+         *     customer_basket_label: string,
+         *     basket_membership_upsell: string
          * } $data
          */
         $data = $this->form->getState();

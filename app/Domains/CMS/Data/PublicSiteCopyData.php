@@ -21,6 +21,7 @@ final readonly class PublicSiteCopyData
         public string $customerLoggedInLabel,
         public string $customerLoggedOutLabel,
         public string $customerBasketLabel,
+        public string $basketMembershipUpsell,
     ) {}
 
     /**
@@ -38,7 +39,8 @@ final readonly class PublicSiteCopyData
      *     footer_availability_notice: string,
      *     customer_logged_in_label: string,
      *     customer_logged_out_label: string,
-     *     customer_basket_label: string
+     *     customer_basket_label: string,
+     *     basket_membership_upsell: string
      * }
      */
     public function toArray(): array
@@ -58,6 +60,7 @@ final readonly class PublicSiteCopyData
             'customer_logged_in_label' => $this->customerLoggedInLabel,
             'customer_logged_out_label' => $this->customerLoggedOutLabel,
             'customer_basket_label' => $this->customerBasketLabel,
+            'basket_membership_upsell' => $this->basketMembershipUpsell,
         ];
     }
 }

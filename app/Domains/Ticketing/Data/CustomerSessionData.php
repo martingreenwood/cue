@@ -23,5 +23,11 @@ final readonly class CustomerSessionData
         public string $changePasswordUrl,
         public string $forgotPasswordUrl,
         public string $deauthenticateUrl,
+        public string $basketUrl,
+        public string $basketTicketsUrl,
+        public string $basketMerchandiseUrl,
+        public string $stockItemsUrl,
+        public string $initiateDirectPaymentUrl,
+        public string $initiateCustomerPaymentUrl,
     ) {}
 }

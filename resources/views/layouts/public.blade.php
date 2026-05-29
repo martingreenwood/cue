@@ -28,6 +28,8 @@
         @if (file_exists(public_path('build/manifest.json')) || file_exists(public_path('hot')))
             @vite(['resources/css/app.css', 'resources/js/app.js'])
         @endif
+
+        @stack('head')
     </head>
     <body class="min-h-screen bg-[#f5f0e8] font-sans text-[#171511] antialiased">
         <a href="#content" class="sr-only z-50 rounded-full bg-[#a4432e] px-5 py-3 text-white focus:not-sr-only focus:fixed focus:left-5 focus:top-5">

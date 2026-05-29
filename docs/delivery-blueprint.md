@@ -121,6 +121,61 @@ Initial integration boundary:
   provider-managed sign-in status and browser-to-Spektrix login; do not add
   Cue-owned customer persistence, custom basket operations or order handling.
 
+### Spektrix Payments API (Custom Checkout)
+
+Spektrix provides a pre-release Payments API and `<spektrix-payments>` web component that
+enables a fully custom checkout experience without relying on a payment iframe. The
+component is Adyen-powered and Spektrix-managed, so card data and PCI scope remain
+entirely outside Cue. This changes the viable scope of the `/basket` and `/checkout`
+pages materially.
+
+Checkout flows available:
+
+- **Direct Checkout** (`POST /basket/initiate-direct-payment`): for unauthenticated
+  customers, identified by email only after payment is confirmed.
+- **Customer Checkout** (`POST /basket/initiate-customer-payment`): for customers who
+  are logged in or have been added to the basket.
+
+The initiation endpoint returns a `paymentToken`. Cue passes this to the component:
+
+```html
+<spektrix-payments
+    custom-domain="{tickets.yourdomain.com}"
+    system-name="{clientName}"
+    payment-token="{paymentToken}"
+    billing-address-id="{addressId}"   <!-- required for Customer Checkout -->
+    store-card="true"                  <!-- required for Customer Checkout -->
+></spektrix-payments>
+```
+
+The component fires `onPaymentCompleted` (with `event.detail.orderId`), `onPaymentRefused`,
+`onPaymentNotFound` (basket timed out) and `onError` for orchestrating the post-payment
+journey entirely from Cue.
+
+Basket API calls supporting a custom basket page follow the same browser-to-Spektrix
+pattern already used for account pages:
+
+- `GET /api/v3/basket` — full basket state including tickets, totals, applied offers,
+  delivery options and a `Hash` value that changes on any mutation.
+- `PATCH /api/v3/basket` with `{ "promoCode": "MYCODE" }` — applies a promo code inline;
+  returns the updated basket with `TotalDiscount` and recalculated totals.
+- `DELETE /api/v3/basket/tickets?ticketIds[]=…` — removes specific tickets.
+- `PATCH /api/v3/basket/tickets?ticketIds[]=…` — updates ticket type on selected tickets.
+
+Seat selection is unaffected: it continues through `ChooseSeats.aspx` (the booking
+handoff from the event detail page), after which Spektrix returns the customer to
+Cue's `/basket`.
+
+**Hard gates before any implementation work begins:**
+
+1. The Payments API is **pre-release and not generally available**. Spektrix early
+   access must be confirmed in writing before any implementation starts.
+2. The Cue hosting domain must be **whitelisted by Spektrix** for the payments
+   component. This is a separate step from custom domain confirmation and requires
+   contacting Spektrix support with both production and development domain values.
+3. The `SPEKTRIX_CUSTOM_DOMAIN_CONFIRMED=true` condition (already a Phase 4 hard
+   requirement) must be met before basket or checkout components activate.
+
 Reference material:
 
 - [Spektrix API v3 Overview](https://integrate.spektrix.com/docs/API3)
@@ -130,6 +185,8 @@ Reference material:
 - [Spektrix Customer Information](https://integrate.spektrix.com/docs/customer)
 - [Spektrix Login Status Web Component](https://integrate.spektrix.com/docs/web-components/login-status/spektrix-login-status)
 - [Spektrix Basket Summary Web Component](https://integrate.spektrix.com/docs/web-components/basket-summary/spektrix-basket-summary)
+- [Spektrix Payments Component](https://integrate.spektrix.com/docs/spektrix-payments/payments-component)
+- [Spektrix Payments API: Custom Checkouts](https://integrate.spektrix.com/docs/spektrix-payments/payments-custom-checkouts)
 - [Spektrix API v3 Demo Endpoint Index](https://system.spektrix.com/apitesting/api/v3/Help)
 
 ## Architecture
@@ -953,6 +1010,11 @@ Next coding tranche:
    provider responses.
 9. Execute the production-like staging soak and failure drill in
    `docs/staging-operations-runbook.md`.
+10. Contact Spektrix to confirm Payments API early access and submit Cue hosting
+    domain(s) for whitelisting. Both must be confirmed in writing before the
+    custom basket and checkout implementation begins. While awaiting confirmation,
+    `/basket` and `/checkout` remain the current iframe journeys; no code changes
+    are needed until access is granted.
 
 ## Operational Decisions
 
@@ -974,12 +1036,13 @@ Accepted now:
 | Public availability freshness language | Cue labels locally synchronised values as guide prices and does not claim live availability; current ticket availability and final pricing are confirmed during secure Spektrix booking. Cue-owned wording is editable in Filament through Settings > Content Strings, while provider iframe content remains external. |
 | No public availability snapshot at launch | The embedded Spektrix booking journey already confirms live seats and final pricing. Avoiding a second freshness-sensitive public data path keeps launch resilient and truthful; provider-isolated snapshots can be added only when a concrete availability-led UX requirement exists. |
 | Spektrix customer-facing custom domain required for launch | Booking iframes, `integrate.js` and customer-session components activate a valid HTTPS custom-domain/client path only when `SPEKTRIX_CUSTOM_DOMAIN_CONFIRMED=true` after Spektrix confirmation, including when legacy fallback configuration is present. This protects first-party booking sessions and avoids premature or partial-domain basket/CORS failures. Server-side synchronisation may continue to use `SPEKTRIX_API_BASE_URL`. |
-| Customer-session utility bar scope | Public pages may show Spektrix-managed login state and basket count using the official Web Components on the active booking domain. Cue-owned account entry supports customer registration, password login, logout and magic-link recovery through direct browser-to-Spektrix Web User calls on that domain; basket continues through an embedded provider surface. The provider password-reset iframe is retained only as an unadvertised Website Admin fallback. Credentials are transmitted browser-to-provider only; Cue does not persist customer, basket or order data. |
+| Customer-session utility bar scope | Public pages may show Spektrix-managed login state and basket count using the official Web Components on the active booking domain. Cue-owned account entry supports customer registration, password login, logout and magic-link recovery through direct browser-to-Spektrix Web User calls on that domain. The provider password-reset iframe is retained only as an unadvertised Website Admin fallback. Credentials are transmitted browser-to-provider only; Cue does not persist customer, basket or order data. |
 | Account contact preference scope | `/account/contact-preferences` should use `GET /statements` for available provider statements, `GET /customer/agreed-statements` for current customer consent state, `POST /customer/agreed-statements` for newly selected statements and `DELETE /customer/agreed-statements/{statementId}` for individual removals. `PUT /customer/agreed-statements` is acceptable only for a deliberate complete save-all flow; bulk `DELETE /customer/agreed-statements` remains out of scope until multi-select removal exists. Cue does not persist consent state locally. |
 | Account address management scope | `/account/addresses` should use Spektrix current-customer address endpoints directly in the browser: `GET /customer/addresses` for rendering, `POST /customer/addresses` for adding, `PATCH /customer/addresses/{addressId}` for normal edits and `DELETE /customer/addresses/{addressId}` for single-address removal. Country metadata comes from `GET /countries` and postcode lookup uses `GET /postcode-lookup?postcode={postcode}` followed by `GET /postcode-lookup/{postcodeLookupId}`. Cue avoids local address persistence and does not use collection-wide `PUT` or bulk `DELETE` until a deliberate replace-all or multi-select workflow exists. |
 | Account order history scope | `/account/orders` should use `GET /customer/orders` for the signed-in customer's history, `GET /orders/{id}` for selected order details, `GET /customer/print-at-home-documents` for e-ticket listing and `GET /print-at-home-documents/{id}` for a specific current-user e-ticket. Cue renders order and ticketing documents as live customer-session data only, without local order persistence or venue-specific custom attribute display unless explicitly modelled. |
 | Account payment methods scope | `/account/payments` should use `GET /customer/stored-cards?includePending={includePending}` for masked stored-card display and `DELETE /customer/stored-cards/{cardId}` for removals. Cue never handles raw card credentials; adding cards stays in a Spektrix-owned secure journey unless a separate provider flow is agreed. |
-| Spektrix Website Admin support configuration | The `apitesting` client is configured with Cue return URLs and Express Checkout support settings. Cue now implements the configured support route set: `/login`, `/account`, `/account/register`, `/account/password-reset`, `/basket`, `/events`, `/checkout`, `/redeem`, `/renew` and `/blank`. Magic link is the advertised recovery route, while password-reset completion must load from the same confirmed customer-facing Spektrix origin as any provider-issued reset link. Checkout, basket, password reset, gift redemption and membership renewal remain provider-isolated iframe journeys; `/blank` is intentionally empty for Spektrix website JavaScript options. |
+| Spektrix Website Admin support configuration | The `apitesting` client is configured with Cue return URLs and Express Checkout support settings. Cue now implements the configured support route set: `/login`, `/account`, `/account/register`, `/account/password-reset`, `/basket`, `/events`, `/checkout`, `/redeem`, `/renew` and `/blank`. Magic link is the advertised recovery route, while password-reset completion must load from the same confirmed customer-facing Spektrix origin as any provider-issued reset link. Password reset, gift redemption and membership renewal remain provider-isolated iframe journeys; `/blank` is intentionally empty for Spektrix website JavaScript options. `/basket` and `/checkout` are targeted for migration to the Payments API custom checkout approach (see below). |
+| Basket and checkout page scope | `/basket` will be a Cue-owned page that reads basket state from `GET /api/v3/basket`, renders tickets and totals natively, allows inline promo code application via `PATCH /api/v3/basket` and ticket removal via `DELETE /api/v3/basket/tickets`, then links to `/checkout`. `/checkout` will render the `<spektrix-payments>` web component after calling `POST /basket/initiate-direct-payment` (unauthenticated) or `POST /basket/initiate-customer-payment` (logged in) to obtain a payment token. On `onPaymentCompleted`, Cue redirects to a confirmation page using the returned `orderId`. Seat selection continues through `ChooseSeats.aspx`; the payment component styling inherits Adyen BEM classes and can be tuned through the existing Spektrix CSS file or Cue's own stylesheets. Implementation is gated on Spektrix Payments API early access confirmation and domain whitelisting — until those are confirmed, `/basket` and `/checkout` remain the current provider iframe journeys. |
 | Public filter taxonomy ownership | Editors define reusable `What`, `Offers` and `Access` terms in Filament. `What` and `Offers` attach to events; `Access` attaches to performances so accessibility claims remain date-specific. |
 | Admin content modelling before public pages | Lets editors and developers validate usable content, source ownership and pricing presentation against realistic imported data. |
 

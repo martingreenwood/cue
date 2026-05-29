@@ -199,15 +199,22 @@ test('public customer session links open a direct provider login form and an emb
     $this->get(route('ticketing.basket'))
         ->assertSuccessful()
         ->assertSee('Your basket')
-        ->assertSee('https://system.spektrix.com/apitesting/website/Basket2.aspx', false)
-        ->assertSee('https://system.spektrix.com/apitesting/website/scripts/integrate.js', false);
+        ->assertSee('data-customer-basket', false)
+        ->assertSee('data-basket-url="https://system.spektrix.com/apitesting/api/v3/basket"', false)
+        ->assertSee('data-basket-tickets-url="https://system.spektrix.com/apitesting/api/v3/basket/tickets"', false)
+        ->assertSee('data-stock-items-url="https://system.spektrix.com/apitesting/api/v3/stock-items"', false)
+        ->assertSee('data-client-name="apitesting"', false)
+        ->assertDontSee('<iframe', false);
 
     $this->get(route('ticketing.checkout'))
         ->assertSuccessful()
         ->assertSee('Checkout')
-        ->assertSee('https://system.spektrix.com/apitesting/website/secure/Checkout.aspx', false)
-        ->assertSee('https://system.spektrix.com/apitesting/website/scripts/integrate.js', false)
-        ->assertSee('<iframe', false);
+        ->assertSee('data-customer-checkout', false)
+        ->assertSee('data-initiate-direct-payment-url="https://system.spektrix.com/apitesting/api/v3/basket/initiate-direct-payment"', false)
+        ->assertSee('data-initiate-customer-payment-url="https://system.spektrix.com/apitesting/api/v3/basket/initiate-customer-payment"', false)
+        ->assertSee('<spektrix-payments', false)
+        ->assertSee('system-name="apitesting"', false)
+        ->assertDontSee('<iframe', false);
 
     $this->get(route('ticketing.redeem'))
         ->assertSuccessful()
@@ -305,11 +312,15 @@ test('public customer session controls use the confirmed custom-domain host only
 
     $this->get(route('ticketing.basket'))
         ->assertSuccessful()
-        ->assertSee('https://tickets.newwolseytheatre.co.uk/wolsey/website/Basket2.aspx', false);
+        ->assertSee('data-basket-url="https://tickets.newwolseytheatre.co.uk/wolsey/api/v3/basket"', false)
+        ->assertSee('data-client-name="wolsey"', false)
+        ->assertDontSee('<iframe', false);
 
     $this->get(route('ticketing.checkout'))
         ->assertSuccessful()
-        ->assertSee('https://tickets.newwolseytheatre.co.uk/wolsey/website/secure/Checkout.aspx', false);
+        ->assertSee('data-initiate-direct-payment-url="https://tickets.newwolseytheatre.co.uk/wolsey/api/v3/basket/initiate-direct-payment"', false)
+        ->assertSee('system-name="wolsey"', false)
+        ->assertDontSee('<iframe', false);
 
     $this->get(route('ticketing.redeem'))
         ->assertSuccessful()
