@@ -57,11 +57,11 @@ final class SyncPerformancePricesAction
 
             PerformancePrice::updateOrCreate(
                 [
+                    'performance_id' => $performance->getKey(),
                     'provider' => $this->provider->providerKey(),
                     'external_id' => $price->externalId,
                 ],
                 [
-                    'performance_id' => $performance->getKey(),
                     'ticket_type_external_id' => $price->ticketTypeExternalId,
                     'ticket_type_name' => $price->ticketTypeName,
                     'price_band_external_id' => $price->priceBandExternalId,

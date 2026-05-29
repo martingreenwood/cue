@@ -2,20 +2,30 @@
 
 declare(strict_types=1);
 
+use App\Domains\CMS\Models\PublicSiteSetting;
+use App\Domains\Events\Enums\FilterGroup;
 use App\Domains\Events\Jobs\SyncTicketingCatalogue;
 use App\Domains\Events\Models\Event;
 use App\Domains\Events\Models\EventEditorial;
 use App\Domains\Events\Models\EventRedirect;
+use App\Domains\Events\Models\FilterTerm;
 use App\Domains\Events\Models\Performance;
 use App\Domains\Events\Models\PerformancePrice;
+use App\Filament\Pages\ContentStrings;
 use App\Filament\Resources\Events\EventResource;
 use App\Filament\Resources\Events\Pages\EditEvent;
+use App\Filament\Resources\Events\Pages\ListEvents;
+use App\Filament\Resources\Events\Pages\ViewEvent;
 use App\Filament\Resources\Events\RelationManagers\PerformancesRelationManager;
 use App\Filament\Resources\Events\RelationManagers\RedirectsRelationManager;
+use App\Filament\Resources\FilterTerms\Pages\CreateFilterTerm;
+use App\Filament\Resources\FilterTerms\Pages\ListFilterTerms;
+use App\Filament\Resources\Performances\Pages\EditPerformance;
 use App\Filament\Resources\Performances\Pages\ViewPerformance;
 use App\Filament\Resources\Performances\RelationManagers\PricesRelationManager;
 use App\Filament\Resources\SyncRuns\Pages\ListSyncRuns;
 use App\Models\User;
+use Database\Seeders\FilterTermVocabularySeeder;
 use Filament\Actions\Testing\TestAction;
 use Illuminate\Bus\PendingBatch;
 use Illuminate\Support\Facades\Bus;
@@ -53,6 +63,145 @@ test('events are editable only through Cue-owned editorial presentation fields',
         ->and($editorial->is_published)->toBeTrue();
 });
 
+test('editors may customise public availability and booking language', function () {
+    Livewire::test(ContentStrings::class)
+        ->fillForm([
+            'listing_kicker' => 'Booking now',
+            'guide_price_label' => 'Indicative ticket price',
+            'guide_price_prefix' => 'Tickets from',
+            'prices_confirmed_in_booking' => 'See booking for prices',
+            'dynamic_price_suffix' => 'Subject to change',
+            'stale_price_suffix' => 'Confirm when booking',
+            'performance_freshness_notice' => 'Our performance guide is updated regularly. Confirm current seats when booking.',
+            'booking_cta_label' => 'Select seats',
+            'online_booking_unavailable_label' => 'Contact the box office',
+            'secure_booking_prefix' => 'Select current seats securely for',
+            'footer_availability_notice' => 'Ticket availability is confirmed at booking.',
+            'customer_logged_in_label' => 'Hello',
+            'customer_logged_out_label' => 'Log in to your account',
+            'customer_basket_label' => 'My basket',
+        ])
+        ->call('save')
+        ->assertHasNoFormErrors()
+        ->assertNotified();
+
+    $settings = PublicSiteSetting::query()->sole();
+
+    expect($settings->listing_kicker)->toBe('Booking now')
+        ->and($settings->booking_cta_label)->toBe('Select seats')
+        ->and($settings->footer_availability_notice)->toBe('Ticket availability is confirmed at booking.')
+        ->and($settings->customer_logged_out_label)->toBe('Log in to your account')
+        ->and($settings->customer_basket_label)->toBe('My basket');
+});
+
+test('editors may define public filter terms', function () {
+    Livewire::test(CreateFilterTerm::class)
+        ->fillForm([
+            'filter_group' => FilterGroup::Access->value,
+            'name' => 'Audio Described',
+            'slug' => 'audio-described',
+            'description' => 'For performances with audio description provision.',
+            'sort_order' => 10,
+        ])
+        ->call('create')
+        ->assertHasNoFormErrors()
+        ->assertNotified();
+
+    $term = FilterTerm::query()->sole();
+
+    expect($term->filter_group)->toBe(FilterGroup::Access)
+        ->and($term->name)->toBe('Audio Described')
+        ->and($term->slug)->toBe('audio-described');
+});
+
+test('editors can review the seeded representative public filter vocabulary', function () {
+    $this->seed(FilterTermVocabularySeeder::class);
+
+    expect(FilterTerm::query()->count())->toBe(18)
+        ->and(FilterTerm::query()->where('filter_group', FilterGroup::What)->orderBy('sort_order')->pluck('slug')->all())
+        ->toBe([
+            'drama',
+            'comedy',
+            'dance',
+            'music',
+            'family',
+            'talks-and-ideas',
+            'workshops',
+        ])
+        ->and(FilterTerm::query()->where('filter_group', FilterGroup::Offers)->orderBy('sort_order')->pluck('slug')->all())
+        ->toBe([
+            'members-priority',
+            'under-26-tickets',
+            'schools-offer',
+            'pay-what-you-can',
+            'group-discounts',
+        ])
+        ->and(FilterTerm::query()->where('filter_group', FilterGroup::Access)->orderBy('sort_order')->pluck('slug')->all())
+        ->toBe([
+            'audio-described',
+            'captioned',
+            'bsl-interpreted',
+            'relaxed-performance',
+            'touch-tour',
+            'dementia-friendly',
+        ]);
+
+    Livewire::test(ListFilterTerms::class)
+        ->set('tableRecordsPerPage', 25)
+        ->assertCanSeeTableRecords(FilterTerm::query()->get())
+        ->assertSee('Drama')
+        ->assertSee('Members Priority')
+        ->assertSee('Audio Described')
+        ->assertSee('Specific performances with live audio description');
+
+    $this->seed(FilterTermVocabularySeeder::class);
+
+    expect(FilterTerm::query()->count())->toBe(18);
+});
+
+test('editors assign what and offers terms to events without mutating imported data', function () {
+    $event = Event::factory()->create(['title' => 'Synced Source Title']);
+    $whatTerm = FilterTerm::factory()->create([
+        'filter_group' => FilterGroup::What,
+        'name' => 'Drama',
+        'slug' => 'drama',
+    ]);
+    $offerTerm = FilterTerm::factory()->create([
+        'filter_group' => FilterGroup::Offers,
+        'name' => 'Members',
+        'slug' => 'members',
+    ]);
+
+    Livewire::test(EditEvent::class, ['record' => $event->getKey()])
+        ->fillForm([
+            'whatTerms' => [$whatTerm->getKey()],
+            'offerTerms' => [$offerTerm->getKey()],
+        ])
+        ->call('save')
+        ->assertHasNoFormErrors();
+
+    expect($event->refresh()->title)->toBe('Synced Source Title')
+        ->and($event->whatTerms()->pluck('filter_terms.name')->all())->toBe(['Drama'])
+        ->and($event->offerTerms()->pluck('filter_terms.name')->all())->toBe(['Members']);
+});
+
+test('editors assign access terms to individual performances', function () {
+    $performance = Performance::factory()->create();
+    $accessTerm = FilterTerm::factory()->create([
+        'filter_group' => FilterGroup::Access,
+        'name' => 'Captioned',
+        'slug' => 'captioned',
+    ]);
+
+    Livewire::test(EditPerformance::class, ['record' => $performance->getKey()])
+        ->fillForm(['accessTerms' => [$accessTerm->getKey()]])
+        ->call('save')
+        ->assertHasNoFormErrors()
+        ->assertNotified();
+
+    expect($performance->accessTerms()->pluck('filter_terms.name')->all())->toBe(['Captioned']);
+});
+
 test('event and performance inspectors expose synchronized related data', function () {
     $event = Event::factory()->create();
     $performance = Performance::factory()->for($event)->create([
@@ -71,6 +220,43 @@ test('event and performance inspectors expose synchronized related data', functi
         'ownerRecord' => $performance,
         'pageClass' => ViewPerformance::class,
     ])->assertCanSeeTableRecords([$price]);
+});
+
+test('editors can publish and unpublish an imported event from its view page', function () {
+    $event = Event::factory()->create();
+
+    Livewire::test(ViewEvent::class, ['record' => $event->getKey()])
+        ->callAction(TestAction::make('publishNow'))
+        ->assertNotified();
+
+    $editorial = EventEditorial::query()->sole();
+
+    expect($editorial->is_published)->toBeTrue()
+        ->and($editorial->published_at)->not->toBeNull();
+
+    Livewire::test(ViewEvent::class, ['record' => $event->getKey()])
+        ->callAction(TestAction::make('unpublish'))
+        ->assertNotified();
+
+    expect($editorial->refresh()->is_published)->toBeFalse();
+});
+
+test('editors can publish and unpublish imported events from the listing', function () {
+    $event = Event::factory()->create();
+
+    Livewire::test(ListEvents::class)
+        ->callAction(TestAction::make('publishNow')->table($event))
+        ->assertNotified();
+
+    $editorial = EventEditorial::query()->sole();
+
+    expect($editorial->is_published)->toBeTrue();
+
+    Livewire::test(ListEvents::class)
+        ->callAction(TestAction::make('unpublish')->table($event))
+        ->assertNotified();
+
+    expect($editorial->refresh()->is_published)->toBeFalse();
 });
 
 test('editors may create redirects attached to an imported event', function () {

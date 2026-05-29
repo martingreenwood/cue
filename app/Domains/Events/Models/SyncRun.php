@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 /**
+ * @property SyncRunStatus $status
  * @property CarbonImmutable $queued_at
  * @property CarbonImmutable|null $started_at
  * @property CarbonImmutable|null $finished_at
@@ -19,6 +20,7 @@ use Illuminate\Database\Eloquent\Model;
  * @property int $performances_queued
  * @property int $performances_failed
  * @property int $prices_synced
+ * @property array<string, mixed>|null $context
  */
 class SyncRun extends Model
 {

@@ -17,7 +17,11 @@ class SyncTicketingCatalogueCommand extends Command
     {
         $syncRun = $queueCatalogueSync->execute();
 
-        $this->components->info("Catalogue sync queued as run #{$syncRun->getKey()}.");
+        $message = $syncRun->wasRecentlyCreated
+            ? "Catalogue sync queued as run #{$syncRun->getKey()}."
+            : "Catalogue sync is already active as run #{$syncRun->getKey()}.";
+
+        $this->components->info($message);
 
         return self::SUCCESS;
     }

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\Resources\Performances\Pages;
 
 use App\Filament\Resources\Performances\PerformanceResource;
+use Filament\Actions\EditAction;
 use Filament\Resources\Pages\ViewRecord;
 
 class ViewPerformance extends ViewRecord
@@ -13,6 +14,8 @@ class ViewPerformance extends ViewRecord
 
     protected function getHeaderActions(): array
     {
-        return [];
+        return [
+            EditAction::make(),
+        ];
     }
 }

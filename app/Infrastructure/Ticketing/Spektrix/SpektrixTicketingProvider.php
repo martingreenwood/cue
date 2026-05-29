@@ -5,21 +5,97 @@ declare(strict_types=1);
 namespace App\Infrastructure\Ticketing\Spektrix;
 
 use App\Domains\Ticketing\Contracts\TicketingProvider;
+use App\Domains\Ticketing\Data\BookingHandoffData;
+use App\Domains\Ticketing\Data\BookingHandoffRequestData;
+use App\Domains\Ticketing\Data\CustomerAuthenticationData;
+use App\Domains\Ticketing\Data\CustomerJourneyData;
+use App\Domains\Ticketing\Data\CustomerSessionData;
 use App\Domains\Ticketing\Data\EventData;
 use App\Domains\Ticketing\Data\PerformanceData;
 use App\Domains\Ticketing\Data\PerformancePriceData;
+use App\Domains\Ticketing\Enums\CustomerJourney;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Uri;
 use LogicException;
 use UnexpectedValueException;
 
 final class SpektrixTicketingProvider implements TicketingProvider
 {
+    public function __construct(
+        private readonly SpektrixCustomDomainReadiness $customDomainReadiness = new SpektrixCustomDomainReadiness,
+    ) {}
+
     public function providerKey(): string
     {
         return 'spektrix';
+    }
+
+    public function bookingHandoff(BookingHandoffRequestData $performance): ?BookingHandoffData
+    {
+        $baseUrl = $this->customDomainReadiness->activeBookingBaseUrl();
+
+        if ($baseUrl === null) {
+            return null;
+        }
+
+        $query = $this->bookingHandoffQuery($performance);
+
+        if ($query === null) {
+            return null;
+        }
+
+        return new BookingHandoffData(
+            url: Uri::of(rtrim($baseUrl, '/').'/website/ChooseSeats.aspx')
+                ->withQuery([...$query, 'resize' => 'true'])
+                ->value(),
+            embedScriptUrl: Uri::of(rtrim($baseUrl, '/').'/website/scripts/integrate.js')->value(),
+        );
+    }
+
+    public function customerSession(): ?CustomerSessionData
+    {
+        return $this->customDomainReadiness->customerSession();
+    }
+
+    public function customerAuthentication(): ?CustomerAuthenticationData
+    {
+        $baseUrl = $this->customDomainReadiness->activeBookingBaseUrl();
+
+        if ($baseUrl === null) {
+            return null;
+        }
+
+        return new CustomerAuthenticationData(
+            authenticateUrl: Uri::of(rtrim($baseUrl, '/').'/api/v3/customer/authenticate')->value(),
+            createCustomerUrl: Uri::of(rtrim($baseUrl, '/').'/api/v3/customer')->value(),
+            sendMagicLinkUrl: Uri::of(rtrim($baseUrl, '/').'/api/v3/customer/send-magic-link')->value(),
+            authenticateMagicLinkUrl: Uri::of(rtrim($baseUrl, '/').'/api/v3/customer/authenticate-magic-link')->value(),
+        );
+    }
+
+    public function customerJourney(CustomerJourney $journey): ?CustomerJourneyData
+    {
+        $baseUrl = $this->customDomainReadiness->activeBookingBaseUrl();
+
+        if ($baseUrl === null) {
+            return null;
+        }
+
+        $path = match ($journey) {
+            CustomerJourney::Basket => '/website/Basket2.aspx',
+            CustomerJourney::Checkout => '/website/secure/Checkout.aspx',
+            CustomerJourney::PasswordReset => '/website/Secure/SetPassword.aspx',
+            CustomerJourney::Redeem => '/website/secure/RedeemGift.aspx',
+            CustomerJourney::Renew => '/website/Memberships.aspx',
+        };
+
+        return new CustomerJourneyData(
+            iframeUrl: Uri::of(rtrim($baseUrl, '/').$path)->value(),
+            embedScriptUrl: Uri::of(rtrim($baseUrl, '/').'/website/scripts/integrate.js')->value(),
+        );
     }
 
     /**
@@ -259,5 +335,21 @@ final class SpektrixTicketingProvider implements TicketingProvider
         }
 
         return $currency;
+    }
+
+    /**
+     * @return array<string, string>|null
+     */
+    private function bookingHandoffQuery(BookingHandoffRequestData $performance): ?array
+    {
+        if ($performance->webPerformanceId !== null && $performance->webPerformanceId !== '') {
+            return ['WebInstanceId' => $performance->webPerformanceId];
+        }
+
+        if (preg_match('/^\d+/', $performance->performanceExternalId, $matches) !== 1) {
+            return null;
+        }
+
+        return ['EventInstanceId' => $matches[0]];
     }
 }

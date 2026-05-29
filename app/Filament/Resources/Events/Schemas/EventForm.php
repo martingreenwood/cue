@@ -7,6 +7,7 @@ namespace App\Filament\Resources\Events\Schemas;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\RichEditor;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
@@ -109,6 +110,27 @@ class EventForm
                             ->label('Hero image alternative text')
                             ->maxLength(255)
                             ->columnSpanFull(),
+                    ])
+                    ->columnSpanFull(),
+                Section::make('Public Filters')
+                    ->description('Editorial classifications for the public event listing. Accessibility is assigned to individual performances.')
+                    ->schema([
+                        Grid::make(2)->schema([
+                            Select::make('whatTerms')
+                                ->label('What')
+                                ->helperText('Event type or programme classification, such as Comedy, Drama or Family.')
+                                ->relationship(titleAttribute: 'name')
+                                ->multiple()
+                                ->preload()
+                                ->searchable(),
+                            Select::make('offerTerms')
+                                ->label('Offers')
+                                ->helperText('Event-level campaigns or offers, such as Members or Under 26.')
+                                ->relationship(titleAttribute: 'name')
+                                ->multiple()
+                                ->preload()
+                                ->searchable(),
+                        ]),
                     ])
                     ->columnSpanFull(),
             ]);

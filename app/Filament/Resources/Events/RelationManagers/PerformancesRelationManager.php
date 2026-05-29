@@ -6,6 +6,8 @@ namespace App\Filament\Resources\Events\RelationManagers;
 
 use App\Domains\Events\Models\Performance;
 use App\Filament\Resources\Performances\PerformanceResource;
+use Filament\Actions\EditAction;
+use Filament\Actions\ViewAction;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
@@ -42,6 +44,14 @@ class PerformancesRelationManager extends RelationManager
                     ->label('Price synced')
                     ->since()
                     ->placeholder('Never'),
+                TextColumn::make('accessTerms.name')
+                    ->label('Access')
+                    ->badge()
+                    ->placeholder('None'),
+            ])
+            ->recordActions([
+                ViewAction::make(),
+                EditAction::make(),
             ])
             ->defaultSort('starts_at');
     }

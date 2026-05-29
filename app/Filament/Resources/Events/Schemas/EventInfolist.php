@@ -46,6 +46,20 @@ class EventInfolist
                         ]),
                     ])
                     ->columnSpanFull(),
+                Section::make('Public Filters')
+                    ->schema([
+                        Grid::make(2)->schema([
+                            TextEntry::make('whatTerms.name')
+                                ->label('What')
+                                ->badge()
+                                ->placeholder('No terms assigned'),
+                            TextEntry::make('offerTerms.name')
+                                ->label('Offers')
+                                ->badge()
+                                ->placeholder('No terms assigned'),
+                        ]),
+                    ])
+                    ->columnSpanFull(),
                 Section::make('Synced Ticketing Source')
                     ->schema([
                         Grid::make(2)->schema([

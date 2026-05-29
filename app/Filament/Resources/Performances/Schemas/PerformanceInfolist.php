@@ -17,6 +17,14 @@ class PerformanceInfolist
     {
         return $schema
             ->components([
+                Section::make('Public Access')
+                    ->schema([
+                        TextEntry::make('accessTerms.name')
+                            ->label('Access provisions')
+                            ->badge()
+                            ->placeholder('No access terms assigned'),
+                    ])
+                    ->columnSpanFull(),
                 Section::make('Performance')
                     ->schema([
                         Grid::make(2)->schema([

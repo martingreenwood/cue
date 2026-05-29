@@ -4,12 +4,19 @@ declare(strict_types=1);
 
 namespace App\Domains\Events\Models;
 
+use App\Domains\Events\Enums\FilterGroup;
+use Carbon\CarbonImmutable;
 use Database\Factories\Domains\Events\Models\EventFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
+/**
+ * @property CarbonImmutable|null $first_performance_at
+ * @property CarbonImmutable|null $last_performance_at
+ */
 class Event extends Model
 {
     /** @use HasFactory<EventFactory> */
@@ -59,6 +66,24 @@ class Event extends Model
     public function redirects(): HasMany
     {
         return $this->hasMany(EventRedirect::class);
+    }
+
+    /**
+     * @return BelongsToMany<FilterTerm, $this>
+     */
+    public function whatTerms(): BelongsToMany
+    {
+        return $this->belongsToMany(FilterTerm::class, 'event_what_term')
+            ->where('filter_terms.filter_group', FilterGroup::What->value);
+    }
+
+    /**
+     * @return BelongsToMany<FilterTerm, $this>
+     */
+    public function offerTerms(): BelongsToMany
+    {
+        return $this->belongsToMany(FilterTerm::class, 'event_offer_term')
+            ->where('filter_terms.filter_group', FilterGroup::Offers->value);
     }
 
     /**

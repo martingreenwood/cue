@@ -4,12 +4,25 @@ declare(strict_types=1);
 
 namespace App\Domains\Events\Models;
 
+use App\Domains\Events\Enums\FilterGroup;
+use Carbon\CarbonImmutable;
 use Database\Factories\Domains\Events\Models\PerformanceFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+/**
+ * @property CarbonImmutable $starts_at
+ * @property CarbonImmutable|null $prices_synced_at
+ * @property string $external_id
+ * @property string|null $web_id
+ * @property int|null $display_from_price_minor
+ * @property string|null $display_currency
+ * @property bool $is_on_sale
+ * @property bool $has_dynamic_pricing
+ */
 class Performance extends Model
 {
     /** @use HasFactory<PerformanceFactory> */
@@ -52,6 +65,15 @@ class Performance extends Model
     public function prices(): HasMany
     {
         return $this->hasMany(PerformancePrice::class);
+    }
+
+    /**
+     * @return BelongsToMany<FilterTerm, $this>
+     */
+    public function accessTerms(): BelongsToMany
+    {
+        return $this->belongsToMany(FilterTerm::class, 'performance_access_term')
+            ->where('filter_terms.filter_group', FilterGroup::Access->value);
     }
 
     /**

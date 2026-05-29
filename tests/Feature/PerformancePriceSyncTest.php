@@ -66,6 +66,22 @@ test('it replaces stale price rows during an idempotent refresh', function () {
         ->and($performance->refresh()->display_from_price_minor)->toBe(4250);
 });
 
+test('it retains price rows for performances that share provider price identifiers', function () {
+    Http::preventStrayRequests();
+    Http::fake(['*/instances/*/price-list' => Http::response(spektrixPriceListPayload())]);
+
+    $firstPerformance = Performance::factory()->create();
+    $secondPerformance = Performance::factory()->create();
+    $run = SyncRun::factory()->create(['operation' => 'performance-prices']);
+
+    app(SyncPerformancePricesAction::class)->execute($firstPerformance, $run);
+    app(SyncPerformancePricesAction::class)->execute($secondPerformance, $run);
+
+    expect($firstPerformance->prices()->count())->toBe(3)
+        ->and($secondPerformance->prices()->count())->toBe(3)
+        ->and(PerformancePrice::query()->count())->toBe(6);
+});
+
 test('the command batches only current on-sale performance price refreshes', function () {
     Bus::fake();
 

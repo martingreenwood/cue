@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\Resources\Performances\Tables;
 
 use App\Domains\Events\Models\Performance;
+use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
@@ -31,6 +32,10 @@ class PerformancesTable
                     ->money(currency: fn (Performance $record): string => $record->display_currency ?? 'GBP', divideBy: 100)
                     ->placeholder('Not synced'),
                 IconColumn::make('has_dynamic_pricing')->label('Dynamic')->boolean(),
+                TextColumn::make('accessTerms.name')
+                    ->label('Access')
+                    ->badge()
+                    ->placeholder('None'),
                 TextColumn::make('prices_synced_at')
                     ->label('Price synced')
                     ->since()
@@ -41,6 +46,7 @@ class PerformancesTable
             ])
             ->recordActions([
                 ViewAction::make(),
+                EditAction::make(),
             ])
             ->defaultSort('starts_at');
     }

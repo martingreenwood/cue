@@ -7,9 +7,14 @@ return [
 
     'event_path_prefix' => env('EVENT_PATH_PREFIX', '/events'),
 
+    'display_timezone' => env('TICKETING_DISPLAY_TIMEZONE', 'Europe/London'),
+
     'catalogue' => [
         'past_days' => (int) env('TICKETING_CATALOGUE_PAST_DAYS', 0),
         'future_days' => (int) env('TICKETING_CATALOGUE_FUTURE_DAYS', 730),
+        'sync_enabled' => (bool) env('TICKETING_CATALOGUE_SYNC_ENABLED', false),
+        'sync_cron' => env('TICKETING_CATALOGUE_SYNC_CRON', '0 * * * *'),
+        'active_run_stale_after_minutes' => (int) env('TICKETING_CATALOGUE_ACTIVE_RUN_STALE_AFTER_MINUTES', 15),
     ],
 
     'pricing' => [
@@ -25,7 +30,9 @@ return [
     'providers' => [
         'spektrix' => [
             'base_url' => env('SPEKTRIX_API_BASE_URL'),
+            'customer_facing_base_url' => env('SPEKTRIX_CUSTOMER_FACING_BASE_URL'),
             'iframe_base_url' => env('SPEKTRIX_IFRAME_BASE_URL'),
+            'custom_domain_confirmed' => (bool) env('SPEKTRIX_CUSTOM_DOMAIN_CONFIRMED', false),
             'connect_timeout' => (int) env('SPEKTRIX_CONNECT_TIMEOUT', 5),
             'timeout' => (int) env('SPEKTRIX_TIMEOUT', 20),
         ],

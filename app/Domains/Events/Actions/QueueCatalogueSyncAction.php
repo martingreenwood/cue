@@ -15,6 +15,29 @@ final class QueueCatalogueSyncAction
 
     public function execute(): SyncRun
     {
+        SyncRun::query()
+            ->where('provider', $this->provider->providerKey())
+            ->where('operation', 'catalogue')
+            ->whereIn('status', [SyncRunStatus::Queued->value, SyncRunStatus::Running->value])
+            ->where('queued_at', '<', now()->subMinutes((int) config('ticketing.catalogue.active_run_stale_after_minutes', 15)))
+            ->update([
+                'status' => SyncRunStatus::Failed,
+                'finished_at' => now(),
+                'error_message' => 'Catalogue sync was marked failed after exceeding the active run timeout.',
+                'context' => ['reason' => 'active_run_timeout'],
+            ]);
+
+        $activeRun = SyncRun::query()
+            ->where('provider', $this->provider->providerKey())
+            ->where('operation', 'catalogue')
+            ->whereIn('status', [SyncRunStatus::Queued->value, SyncRunStatus::Running->value])
+            ->latest('id')
+            ->first();
+
+        if ($activeRun !== null) {
+            return $activeRun;
+        }
+
         $syncRun = SyncRun::create([
             'provider' => $this->provider->providerKey(),
             'operation' => 'catalogue',

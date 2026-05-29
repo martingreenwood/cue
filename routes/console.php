@@ -12,6 +12,12 @@ Schedule::command('horizon:snapshot')
     ->everyFiveMinutes()
     ->onOneServer();
 
+Schedule::command('ticketing:sync-catalogue')
+    ->cron((string) config('ticketing.catalogue.sync_cron', '0 * * * *'))
+    ->when(fn (): bool => (bool) config('ticketing.catalogue.sync_enabled', false))
+    ->withoutOverlapping()
+    ->onOneServer();
+
 Schedule::command('ticketing:sync-prices')
     ->cron((string) config('ticketing.pricing.sync_cron', '*/15 * * * *'))
     ->when(fn (): bool => (bool) config('ticketing.pricing.sync_enabled', false))

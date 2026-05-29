@@ -32,7 +32,17 @@ final class SyncTicketingCatalogue implements ShouldBeUnique, ShouldQueue
 
     public function handle(SyncCatalogueAction $action): void
     {
-        $action->execute(SyncRun::findOrFail($this->syncRunId));
+        $syncRun = SyncRun::findOrFail($this->syncRunId);
+
+        if (
+            $syncRun->status === SyncRunStatus::Failed
+            && is_array($syncRun->context)
+            && ($syncRun->context['reason'] ?? null) === 'active_run_timeout'
+        ) {
+            return;
+        }
+
+        $action->execute($syncRun);
     }
 
     public function uniqueId(): string

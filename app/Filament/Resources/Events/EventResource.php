@@ -56,7 +56,7 @@ class EventResource extends Resource
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()
-            ->with('editorial')
+            ->with(['editorial', 'whatTerms', 'offerTerms'])
             ->withCount('performances');
     }
 

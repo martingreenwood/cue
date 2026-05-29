@@ -4,11 +4,16 @@ declare(strict_types=1);
 
 namespace App\Domains\Events\Models;
 
+use Carbon\CarbonImmutable;
 use Database\Factories\Domains\Events\Models\EventEditorialFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property bool $is_published
+ * @property CarbonImmutable|null $published_at
+ */
 class EventEditorial extends Model
 {
     /** @use HasFactory<EventEditorialFactory> */

@@ -9,3 +9,11 @@
     --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
         'Segoe UI Symbol', 'Noto Color Emoji';
 }
+
+@layer components {
+    spektrix-login-status [data-logged-in-container][style*='display: block'],
+    spektrix-login-status [data-logged-out-container][style*='display: block'] {
+        display: inline-flex !important;
+        align-items: center;
+    }
+}

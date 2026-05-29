@@ -8,6 +8,7 @@ use App\Domains\Events\Models\Performance;
 use App\Domains\Events\Models\SyncRun;
 use App\Filament\Widgets\CatalogueHealthWidget;
 use App\Filament\Widgets\PricingSyncHealthWidget;
+use App\Filament\Widgets\SpektrixBookingDomainHealthWidget;
 use App\Models\User;
 use Livewire\Livewire;
 
@@ -227,4 +228,49 @@ test('pricing health widget excludes cancelled and off-sale performances from st
 
     expect($stats[1]->getValue())->toBe('0')
         ->and($stats[1]->getColor())->toBe('success');
+});
+
+test('booking domain widget warns while the system spektrix domain is customer-facing', function () {
+    config([
+        'ticketing.providers.spektrix.customer_facing_base_url' => 'https://system.spektrix.com/apitesting',
+        'ticketing.providers.spektrix.custom_domain_confirmed' => false,
+    ]);
+
+    $stats = Livewire::test(SpektrixBookingDomainHealthWidget::class)
+        ->instance()
+        ->getStats();
+
+    expect($stats[0]->getValue())->toBe('system.spektrix.com')
+        ->and($stats[0]->getColor())->toBe('warning')
+        ->and($stats[0]->getDescription())->toContain('custom domain required');
+});
+
+test('booking domain widget confirms a customer-facing spektrix custom domain cutover', function () {
+    config([
+        'ticketing.providers.spektrix.customer_facing_base_url' => 'https://tickets.newwolseytheatre.co.uk/wolsey',
+        'ticketing.providers.spektrix.custom_domain_confirmed' => true,
+    ]);
+
+    $stats = Livewire::test(SpektrixBookingDomainHealthWidget::class)
+        ->instance()
+        ->getStats();
+
+    expect($stats[0]->getValue())->toBe('tickets.newwolseytheatre.co.uk')
+        ->and($stats[0]->getColor())->toBe('success')
+        ->and($stats[0]->getDescription())->toContain('iframe and integrate.js');
+});
+
+test('booking domain widget rejects a custom host without a secure spektrix client path', function () {
+    config([
+        'ticketing.providers.spektrix.customer_facing_base_url' => 'http://tickets.newwolseytheatre.co.uk',
+        'ticketing.providers.spektrix.custom_domain_confirmed' => true,
+    ]);
+
+    $stats = Livewire::test(SpektrixBookingDomainHealthWidget::class)
+        ->instance()
+        ->getStats();
+
+    expect($stats[0]->getColor())->toBe('danger')
+        ->and($stats[0]->getDescription())->toContain('HTTPS custom URL')
+        ->and($stats[0]->getDescription())->toContain('client name path');
 });

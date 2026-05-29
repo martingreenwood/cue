@@ -12,13 +12,34 @@ developers.
 ## Current Status
 
 Cue is in vertical-slice development. It now imports public Spektrix events,
-performances and current performance price lists into local storage through
+performances and synchronised performance price lists into local storage through
 Horizon-observable sync jobs. Pricing uses default ticket prices for headline
 "from" amounts rather than presenting concessions as standard ticket prices. The
-current focus is a comprehensive Filament administration and editorial surface
-before public event pages are designed. The first admin tranche now separates
-editorial event content from synced provider data and exposes performances, pricing,
-redirects and sync operations for inspection.
+Filament administration and editorial gate is implemented: it separates editable
+presentation content from synced provider data and exposes performances, pricing,
+redirects and sync operations for inspection. Phase 3 is now underway with
+server-rendered published event listing and detail pages sourced from local records,
+including URL-driven catalogue search plus editor-managed `What`, `Offers` and
+performance-specific `Access` filtering, and a provider-isolated embedded Spektrix
+booking handoff. Cue's public availability and booking-support language is
+managed through a dedicated Filament Content Strings editor with safe domain
+defaults for fresh installations. Filament also defines public filter terms,
+assigning `What` and `Offers` to events and performance-specific `Access`
+provisions. Event detail pages provide date and access filters for long
+performance runs. For launch, Cue deliberately does not claim live seat
+availability before booking; availability and final pricing are confirmed within
+the embedded Spektrix journey. Phase 4 now also surfaces Spektrix customer-facing
+custom-domain readiness in Filament, keeping iframe and integration-script
+configuration aligned for first-party booking sessions. Public pages include a
+provider-isolated customer utility bar that reads Spektrix login status and basket
+count through Web Components on that same active customer-facing domain; its
+logged-out action opens a Cue form that authenticates directly against the Spektrix
+Web User API in the browser, with logout, password reset and passwordless
+magic-link login also routed directly to Spektrix; its basket action opens a
+Cue-hosted embedded Spektrix journey page. Cue-owned status labels are editable
+in Content Strings. Custom hosts are only
+activated after confirmation and URL-readiness checks, including when legacy
+iframe fallback configuration is present.
 
 Verified local stack:
 
@@ -40,6 +61,8 @@ Verified local stack:
 
 The product boundary, target architecture, milestone plan and production readiness
 gates are documented in [docs/delivery-blueprint.md](docs/delivery-blueprint.md).
+The Phase 4 operational staging exercise is documented in
+[docs/staging-operations-runbook.md](docs/staging-operations-runbook.md).
 
 The first implemented tranche is the catalogue sync foundation:
 
@@ -49,10 +72,8 @@ The first implemented tranche is the catalogue sync foundation:
 
 Next:
 
-1. Add dashboard widgets for sync health, failures and stale pricing.
-2. Complete queued managed-image ingestion and optimisation.
-3. Refine publication and redirect workflow after reviewing imported data in Filament.
-4. Design public event pages from the reviewed admin-managed content model.
+1. Seed and review a representative venue filter vocabulary in Filament.
+2. Execute the Phase 4 production-like staging soak and failure drill.
 
 ## Local Development
 
