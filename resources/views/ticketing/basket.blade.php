@@ -11,6 +11,8 @@
         data-basket-url="{{ $customerSession->basketUrl }}"
         data-basket-tickets-url="{{ $customerSession->basketTicketsUrl }}"
         data-basket-merchandise-url="{{ $customerSession->basketMerchandiseUrl }}"
+        data-memberships-url="{{ $customerSession->membershipsUrl }}"
+        data-basket-potential-discount-url="{{ $customerSession->basketPotentialDiscountUrl }}"
         data-stock-items-url="{{ $customerSession->stockItemsUrl }}"
         data-customer-url="{{ $customerSession->customerUrl }}"
         data-checkout-url="{{ route('ticketing.checkout') }}"
@@ -45,11 +47,15 @@
             </div>
 
             <div data-basket-content hidden>
-                {{-- Savings: rendered by JS when PotentialOffers or MultibuyOffers are present --}}
+                {{-- Savings: rendered by JS when PotentialOffers, MultibuyOffers or applied Offers are present --}}
                 <div data-basket-savings hidden class="mt-10 border border-[#171511]/10 bg-white p-6 sm:p-8">
                     <p class="text-sm font-medium uppercase tracking-[0.2em] text-[#a4432e]">Savings</p>
                     <div data-basket-offers class="mt-4 space-y-2 text-sm leading-6 text-[#5d5549]"></div>
-                    <form data-basket-promo-form class="mt-6 flex flex-wrap items-end gap-3">
+                </div>
+
+                {{-- Promotion code: always visible when basket has content --}}
+                <div class="mt-6 border border-[#171511]/10 bg-white p-6 sm:p-8">
+                    <form data-basket-promo-form class="flex flex-wrap items-end gap-3">
                         <div class="flex flex-col gap-2">
                             <label for="basket-promo-code" class="text-sm font-medium text-[#171511]">Promotion code</label>
                             <input

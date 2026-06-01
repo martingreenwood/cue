@@ -2,11 +2,17 @@
 
 declare(strict_types=1);
 
+use App\Domains\CMS\Models\DonationFund;
+use App\Domains\CMS\Models\Membership;
 use App\Domains\Events\Enums\SyncRunStatus;
+use App\Domains\Events\Models\AvailabilitySnapshot;
 use App\Domains\Events\Models\Event;
 use App\Domains\Events\Models\Performance;
 use App\Domains\Events\Models\SyncRun;
+use App\Domains\Ticketing\Contracts\TicketingProvider;
+use App\Filament\Widgets\AvailabilitySyncHealthWidget;
 use App\Filament\Widgets\CatalogueHealthWidget;
+use App\Filament\Widgets\JourneySyncHealthWidget;
 use App\Filament\Widgets\PricingSyncHealthWidget;
 use App\Filament\Widgets\SpektrixBookingDomainHealthWidget;
 use App\Models\User;
@@ -273,4 +279,100 @@ test('booking domain widget rejects a custom host without a secure spektrix clie
     expect($stats[0]->getColor())->toBe('danger')
         ->and($stats[0]->getDescription())->toContain('HTTPS custom URL')
         ->and($stats[0]->getDescription())->toContain('client name path');
+});
+
+test('availability sync health widget shows warning when no snapshot exists', function () {
+    $stats = Livewire::test(AvailabilitySyncHealthWidget::class)
+        ->instance()
+        ->getStats();
+
+    expect($stats[0]->getValue())->toBe('No snapshot yet')
+        ->and($stats[0]->getColor())->toBe('warning');
+});
+
+test('availability sync health widget shows stale and unpriced quality concerns', function () {
+    AvailabilitySnapshot::factory()->create([
+        'future_on_sale_total' => 12,
+        'future_on_sale_available' => 9,
+        'future_on_sale_stale' => 3,
+        'future_on_sale_unpriced' => 1,
+        'captured_at' => now()->subMinutes(5),
+    ]);
+
+    $stats = Livewire::test(AvailabilitySyncHealthWidget::class)
+        ->instance()
+        ->getStats();
+
+    expect($stats[0]->getValue())->toBe('9 / 12')
+        ->and($stats[1]->getValue())->toBe('3 stale, 1 unpriced')
+        ->and($stats[1]->getColor())->toBe('warning')
+        ->and($stats[2]->getColor())->toBe('success');
+});
+
+test('journey sync health widget shows stale freshness when journey sync is overdue', function () {
+    config(['ticketing.journeys.stale_after_minutes' => 180]);
+
+    DonationFund::factory()->create([
+        'provider' => 'spektrix',
+        'external_id' => 'fund-1',
+        'synced_at' => now()->subHours(6),
+        'is_visible' => true,
+    ]);
+
+    Membership::factory()->create([
+        'provider' => 'spektrix',
+        'external_id' => 'membership-1',
+        'synced_at' => now()->subHours(6),
+        'is_visible' => true,
+    ]);
+
+    $provider = mock(TicketingProvider::class);
+    $provider->shouldReceive('providerKey')->andReturn('spektrix');
+    $provider->shouldReceive('funds')->andReturn(collect([
+        (object) ['externalId' => 'fund-1'],
+    ]));
+    $provider->shouldReceive('memberships')->andReturn(collect([
+        (object) ['externalId' => 'membership-1'],
+    ]));
+    app()->instance(TicketingProvider::class, $provider);
+
+    $stats = Livewire::test(JourneySyncHealthWidget::class)
+        ->instance()
+        ->getStats();
+
+    expect($stats[0]->getColor())->toBe('warning')
+        ->and($stats[1]->getValue())->toBe('0')
+        ->and($stats[1]->getColor())->toBe('success');
+});
+
+test('journey sync health widget flags mismatches between visible cms and provider sets', function () {
+    DonationFund::factory()->create([
+        'provider' => 'spektrix',
+        'external_id' => 'fund-visible-only',
+        'is_visible' => true,
+    ]);
+    Membership::factory()->create([
+        'provider' => 'spektrix',
+        'external_id' => 'membership-visible-only',
+        'is_visible' => true,
+    ]);
+
+    $provider = mock(TicketingProvider::class);
+    $provider->shouldReceive('providerKey')->andReturn('spektrix');
+    $provider->shouldReceive('funds')->andReturn(collect([
+        (object) ['externalId' => 'fund-provider-only'],
+    ]));
+    $provider->shouldReceive('memberships')->andReturn(collect([
+        (object) ['externalId' => 'membership-provider-only'],
+    ]));
+    app()->instance(TicketingProvider::class, $provider);
+
+    $stats = Livewire::test(JourneySyncHealthWidget::class)
+        ->instance()
+        ->getStats();
+
+    expect($stats[1]->getValue())->toBe('4')
+        ->and($stats[1]->getDescription())->toContain('Funds: 2')
+        ->and($stats[1]->getDescription())->toContain('memberships: 2')
+        ->and($stats[1]->getColor())->toBe('warning');
 });

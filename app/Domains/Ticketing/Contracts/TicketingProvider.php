@@ -10,6 +10,8 @@ use App\Domains\Ticketing\Data\CustomerAuthenticationData;
 use App\Domains\Ticketing\Data\CustomerJourneyData;
 use App\Domains\Ticketing\Data\CustomerSessionData;
 use App\Domains\Ticketing\Data\EventData;
+use App\Domains\Ticketing\Data\FundData;
+use App\Domains\Ticketing\Data\MembershipData;
 use App\Domains\Ticketing\Data\PerformanceData;
 use App\Domains\Ticketing\Data\PerformancePriceData;
 use App\Domains\Ticketing\Enums\CustomerJourney;
@@ -27,6 +29,16 @@ interface TicketingProvider
     public function customerJourney(CustomerJourney $journey): ?CustomerJourneyData;
 
     public function customerSession(): ?CustomerSessionData;
+
+    /**
+     * @return Collection<int, FundData>
+     */
+    public function funds(): Collection;
+
+    /**
+     * @return Collection<int, MembershipData>
+     */
+    public function memberships(): Collection;
 
     /**
      * @return Collection<int, EventData>

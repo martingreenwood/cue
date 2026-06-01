@@ -29,6 +29,9 @@ Route::controller(PublicCustomerJourneyController::class)
         Route::get('/checkout/confirmation', 'checkoutConfirmation')->name('checkout.confirmation');
         Route::get('/redeem', 'redeem')->name('redeem');
         Route::get('/renew', 'renew')->name('renew');
+        Route::get('/donate', 'donate')->name('donate');
+        Route::get('/gift-vouchers', 'giftVouchers')->name('gift-vouchers');
+        Route::get('/memberships', 'memberships')->name('memberships');
         Route::get('/blank', 'blank')->name('blank');
     });
 

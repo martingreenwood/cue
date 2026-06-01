@@ -549,20 +549,28 @@ Exit criteria:
 ### Phase 4: Availability And Operational Hardening
 
 Goal: provide the operational confidence required for launch.
+Availability decision for launch: Cue will introduce a server-side cached
+performance availability snapshot as part of this phase. The Spektrix onsales
+guide explicitly recommends a lightweight server-side service that periodically
+fetches availability from the provider and serves derived status to pages, rather
+than making live per-visitor API calls. This allows sold-out and low-availability
+states to be surfaced on event detail pages — including during high-demand onsales
+— while keeping the public request path free of live provider dependencies.
 
-Availability decision for launch: Cue will not introduce a short-lived availability
-snapshot in the launch vertical slice. Public pages may show locally synchronised
-programme dates, performance access provisions and guide prices, but they must not
-claim that seats are currently available. Visitors confirm current availability and
-final pricing inside the embedded Spektrix booking journey. This avoids an extra
-freshness-sensitive data path whose value is limited while booking is already
-embedded on the detail page.
+The snapshot uses `GET /api/v3/instances/{id}/status?includeChildPlans=true`, which
+returns `available`, `capacity`, `inBasket` and `unavailable` counts per instance.
+A queued job processes on-sale future performances and stores a derived
+`availability_status` (`on_sale`, `low_availability`, `sold_out`) alongside raw
+counts and a `availability_snapshot_at` timestamp. Public pages read only from
+local snapshot records, never from the live Spektrix status endpoint. Spectrix
+remains the authoritative source for actual inventory at booking time; the
+snapshot is indicative only and is labelled or suppressed when stale.
 
-Spektrix exposes instance status endpoints that can support a future availability
-adapter if a venue requires sold-out indicators, low-availability messaging or
-availability-driven discovery before a visitor enters booking. Any such addition
-must be provider-isolated, short-lived, timestamped and presented as indicative
-until booking confirms inventory.
+Critical constraint from the Spektrix onsales guide: the Spektrix queue kicks in
+at `ChooseSeats.aspx`, which Cue already uses. No code change is needed for queue
+support. However, adding tickets via the basket API directly (bypassing the iframe)
+would bypass the queue — Cue must contact Spektrix support before any large onsale
+if the API-first booking path is ever used.
 
 Operational definition: the production-like staging procedure is specified in
 [`docs/staging-operations-runbook.md`](staging-operations-runbook.md). Cue now
@@ -737,6 +745,14 @@ Deliverables:
   expansion and customer e-ticket display;
 - deliver `/account/payments` with browser-to-Spektrix stored-card listing and
   card removal, without handling raw card credentials in Cue;
+- implement server-side performance availability snapshot using
+  `GET /api/v3/instances/{id}/status`: a queued job stores `availability_status`
+  (`on_sale`, `low_availability`, `sold_out`), raw counts and `availability_snapshot_at`
+  for on-sale future performances; public event detail pages surface sold-out and
+  low-availability states from local snapshot records without live provider calls;
+  a configurable freshness threshold suppresses stale snapshots;
+- add `AvailabilitySyncHealthWidget` to the Filament operations dashboard showing
+  snapshot coverage, stale count and last sync state;
 - cache warming and scheduled sync policy;
 - diagnostics, logging and failure recovery documentation.
 
@@ -745,7 +761,10 @@ Exit criteria:
 - sync failure and stale catalogue scenarios are demonstrably recoverable;
 - operations users know how to diagnose and rerun imports;
 - public pages make no unqualified current-availability claims before Spektrix
-  booking confirmation;
+  booking confirmation — sold-out and low-availability states from local snapshots
+  are labelled as indicative;
+- availability snapshot job runs idempotently, respects freshness thresholds and
+  is observable through Horizon and the Filament dashboard widget;
 - customer-facing Spektrix iframe and integration script requests use one confirmed
   custom-domain/client-name root before launch;
 - public login-status and basket-summary components resolve through that same
@@ -932,9 +951,10 @@ Phase 3 completed so far:
 43. Add server-rendered performance filtering on event detail pages: filter
     upcoming dates by exact date, quick date window and performance-specific
     access provision, while keeping booking confirmation in Spektrix.
-44. Decide Phase 4 launch availability policy: do not implement a short-lived
-    availability snapshot for launch; retain secure Spektrix booking as the
-    authoritative confirmation of live inventory and final price.
+44. Confirm Phase 4 launch availability policy: implement a short-lived
+    server-side availability snapshot for launch, while retaining secure
+    Spektrix booking as the authoritative confirmation of live inventory and
+    final price.
 45. Define Phase 4 staging operations: add configurable hourly catalogue
     scheduling, prevent overlapping or abandoned catalogue run records, add
     bounded Horizon staging capacity and day-long metrics retention, and document
@@ -971,50 +991,70 @@ Phase 3 completed so far:
     Filament-visible vocabulary for `What`, `Offers` and `Access`, then assign
     realistic event-level programme/offer terms and performance-level access
     provisions to existing local catalogue records for review.
+56. Implement `/account/contact-preferences` against Spektrix
+    `GET /statements`, `GET /customer/agreed-statements`,
+    `POST /customer/agreed-statements` and
+    `DELETE /customer/agreed-statements/{statementId}`, reserving
+    `PUT /customer/agreed-statements` for complete save-all flows and bulk
+    `DELETE /customer/agreed-statements` for future multi-select removals.
+57. Implement `/account/addresses` against Spektrix
+    `GET /customer/addresses`, `POST /customer/addresses`,
+    `PATCH /customer/addresses/{addressId}` and
+    `DELETE /customer/addresses/{addressId}`, with list refresh after
+    successful mutations and no local customer-address persistence.
+58. Implement `/account/orders` against Spektrix `GET /customer/orders`,
+    `GET /orders/{id}`, `GET /customer/print-at-home-documents` and
+    `GET /print-at-home-documents/{id}`, rendering list, detail and e-ticket
+    states from live customer-session responses only.
+59. Implement `/account/payments` against Spektrix
+    `GET /customer/stored-cards?includePending={includePending}` and
+    `DELETE /customer/stored-cards/{cardId}`, rendering masked stored-card
+    metadata and refreshing after removals.
+60. Implement Cue-owned account-area delivery for profile, contact preferences,
+    addresses, orders and payments with browser-to-Spektrix customer-session
+    flows, pending end-to-end browser-flow validation.
 
 Next coding tranche:
 
-1. Implement `/account/contact-preferences` against Spektrix `GET /statements`,
-   `GET /customer/agreed-statements`, `POST /customer/agreed-statements` and
-   `DELETE /customer/agreed-statements/{statementId}`, reserving
-   `PUT /customer/agreed-statements` for a complete save-all flow and bulk
-   `DELETE /customer/agreed-statements` for future multi-select removals.
-2. Add browser-facing tests for contact-preference rendering, add, remove,
-   replace-all save behaviour if implemented, provider errors and signed-out
-   recovery using mocked provider responses.
-3. Implement `/account/addresses` against Spektrix
-   `GET /customer/addresses`, `POST /customer/addresses`,
-   `PATCH /customer/addresses/{addressId}` and
-   `DELETE /customer/addresses/{addressId}`, with no local customer-address
-   persistence and with list refresh after successful mutations. Use
-   `GET /countries`, `GET /countries/{isoCode}`,
-   `GET /postcode-lookup?postcode={postcode}` and
-   `GET /postcode-lookup/{postcodeLookupId}` for country-aware validation and
-   postcode lookup.
-4. Add browser-facing tests for address rendering, add, edit, validation,
-   single-delete confirmation, Spektrix error handling and signed-out recovery
-   using mocked provider responses.
-5. Implement `/account/orders` against Spektrix `GET /customer/orders`,
-   `GET /orders/{id}`, `GET /customer/print-at-home-documents` and
-   `GET /print-at-home-documents/{id}`, with list, detail and e-ticket states
-   rendered from live customer-session responses only.
-6. Add browser-facing tests for order history, order-detail expansion, e-ticket
-   display, empty states, provider errors and signed-out recovery using mocked
-   provider responses.
-7. Implement `/account/payments` against Spektrix
-   `GET /customer/stored-cards?includePending={includePending}` and
-   `DELETE /customer/stored-cards/{cardId}`, rendering masked stored-card
-   metadata only and refreshing after removals.
-8. Add browser-facing tests for stored-card display, pending-card inclusion,
-   delete confirmation, provider errors and signed-out recovery using mocked
-   provider responses.
-9. Execute the production-like staging soak and failure drill in
-   `docs/staging-operations-runbook.md`.
-10. Contact Spektrix to confirm Payments API early access and submit Cue hosting
-    domain(s) for whitelisting. Both must be confirmed in writing before the
-    custom basket and checkout implementation begins. While awaiting confirmation,
-    `/basket` and `/checkout` remain the current iframe journeys; no code changes
-    are needed until access is granted.
+Completed in this tranche:
+
+1. Dynamic membership discount upsell is implemented on `/basket` using
+   `GET /api/v3/memberships` and
+   `GET /api/v3/basket/potentialdiscount?membershipId={id}`.
+2. `/donate`, `/gift-vouchers` and `/memberships` routes are implemented as
+   first-class public journeys.
+3. Donate, gift vouchers and memberships are included in both utility and main
+   navigation labels via Content Strings.
+4. Donation funds and memberships are imported into local CMS tables using
+   `ticketing:sync-journeys` and managed through Filament resources with
+   visibility and ordering controls.
+5. `ticketing:sync-journeys` now runs on a default schedule (`*/30 * * * *`)
+   behind `TICKETING_JOURNEY_SYNC_ENABLED`, with overlap protection, configurable
+   retry/backoff (`TICKETING_JOURNEY_SYNC_RETRY_*`) and stale-data warning alerts
+   with cooldown (`TICKETING_JOURNEY_STALE_*`).
+
+Next coding tranche:
+
+Completed in this tranche:
+
+1. Added dashboard health coverage for journey sync freshness and mismatch
+   checks between visible CMS records and provider return sets.
+2. Added browser-facing tests for contact-preference rendering, add, remove and
+   signed-out recovery using mocked provider responses.
+3. Added browser-facing tests for address rendering, validation, edit/delete
+   flows and signed-out recovery using mocked provider responses.
+4. Added browser-facing tests for order history, order detail and e-ticket
+   flows, including provider error states and signed-out recovery.
+5. Added browser-facing tests for stored-card display, pending-card inclusion,
+   removal and provider error states.
+
+Remaining in this tranche:
+
+1. Contact Spektrix to confirm Payments API early access and submit Cue hosting
+   domain(s) for whitelisting. Until confirmed in writing, `/basket` and
+   `/checkout` remain non-payments-API journeys.
+2. Execute the production-like staging soak and failure drill in
+   `docs/staging-operations-runbook.md` as the final pre-live task.
 
 ## Operational Decisions
 
@@ -1034,7 +1074,7 @@ Accepted now:
 | Local price-list snapshots with regular refresh | Makes event pages fast while acknowledging dynamic pricing and leaving final transaction pricing to Spektrix. |
 | No raw-minimum "cheapest" headline | Avoids misrepresenting concession or restricted prices as generally available ticket prices. |
 | Public availability freshness language | Cue labels locally synchronised values as guide prices and does not claim live availability; current ticket availability and final pricing are confirmed during secure Spektrix booking. Cue-owned wording is editable in Filament through Settings > Content Strings, while provider iframe content remains external. |
-| No public availability snapshot at launch | The embedded Spektrix booking journey already confirms live seats and final pricing. Avoiding a second freshness-sensitive public data path keeps launch resilient and truthful; provider-isolated snapshots can be added only when a concrete availability-led UX requirement exists. |
+|| Performance availability snapshot | A server-side queued job calls `GET /api/v3/instances/{id}/status?includeChildPlans=true` for on-sale future performances and stores derived `availability_status` (`on_sale`, `low_availability`, `sold_out`) with raw counts and a freshness timestamp. Public pages read only from local snapshot records and never call the live status endpoint. The Spektrix onsales guide explicitly recommends this server-side caching pattern for high-demand onsales. Spektrix remains the authoritative inventory source at booking time; the snapshot is labelled indicative and suppressed when stale. The Spektrix queue is unaffected — it activates at `ChooseSeats.aspx`, which Cue already hands off to. |
 | Spektrix customer-facing custom domain required for launch | Booking iframes, `integrate.js` and customer-session components activate a valid HTTPS custom-domain/client path only when `SPEKTRIX_CUSTOM_DOMAIN_CONFIRMED=true` after Spektrix confirmation, including when legacy fallback configuration is present. This protects first-party booking sessions and avoids premature or partial-domain basket/CORS failures. Server-side synchronisation may continue to use `SPEKTRIX_API_BASE_URL`. |
 | Customer-session utility bar scope | Public pages may show Spektrix-managed login state and basket count using the official Web Components on the active booking domain. Cue-owned account entry supports customer registration, password login, logout and magic-link recovery through direct browser-to-Spektrix Web User calls on that domain. The provider password-reset iframe is retained only as an unadvertised Website Admin fallback. Credentials are transmitted browser-to-provider only; Cue does not persist customer, basket or order data. |
 | Account contact preference scope | `/account/contact-preferences` should use `GET /statements` for available provider statements, `GET /customer/agreed-statements` for current customer consent state, `POST /customer/agreed-statements` for newly selected statements and `DELETE /customer/agreed-statements/{statementId}` for individual removals. `PUT /customer/agreed-statements` is acceptable only for a deliberate complete save-all flow; bulk `DELETE /customer/agreed-statements` remains out of scope until multi-select removal exists. Cue does not persist consent state locally. |
@@ -1052,7 +1092,6 @@ Deferred decisions:
 | --- | --- |
 | Production PostgreSQL hosting target | Before staging infrastructure is provisioned. |
 | Authenticated Spektrix mode and secret management | When a feature requires restricted API calls. |
-| Live availability snapshot implementation | Post-launch only if a venue requires public sold-out/low-availability messaging or availability-driven discovery before secure booking; use provider-isolated, timestamped, short-lived snapshots. |
 | Final display-price eligibility policy | Before public pages advertise "from" pricing. |
 | Pricing refresh SLA for dynamically priced performances | Before priced pages are enabled outside development. |
 | Media processing implementation details | During the admin editorial phase, once provider image shapes and editorial needs are inspected. |
@@ -1114,10 +1153,11 @@ Resolved during Phase 2 review:
 - Booking handoff identifier: `web_id` (WebInstanceId) preferred, `(int) external_id` fallback.
 - Initial public filter taxonomy: `What` and `Offers` are event terms; `Access`
   is assigned to individual performances to keep accessible-show claims precise.
-- Launch availability policy: Cue presents synchronised guide information and
-  defers current seat availability and final price confirmation to embedded
-  Spektrix booking; no short-lived public availability snapshot is required for
-  the launch vertical slice.
+- Launch availability policy: revised during Phase 4 scoping. Cue will deliver a
+  server-side cached availability snapshot as a Phase 4 deliverable, informed by
+  the Spektrix onsales guide. Sold-out and low-availability indicators are surfaced
+  from local snapshot records. Spektrix remains the authoritative inventory source
+  at booking time; the snapshot is indicative only.
 
 ## Working Rule
 

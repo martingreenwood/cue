@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Domains\CMS\Models\DonationFund;
+use App\Domains\CMS\Models\Membership;
 use App\Domains\CMS\Services\PublicSiteCopyService;
 use App\Domains\Ticketing\Contracts\TicketingProvider;
 use App\Domains\Ticketing\Enums\CustomerJourney;
@@ -40,6 +42,72 @@ final class PublicCustomerJourneyController extends Controller
     public function renew(): View
     {
         return $this->renderJourney(CustomerJourney::Renew);
+    }
+
+    public function donate(): View
+    {
+        $customerSession = $this->ticketingProvider->customerSession();
+
+        if ($customerSession === null) {
+            throw new NotFoundHttpException;
+        }
+
+        $funds = DonationFund::query()
+            ->where('provider', $this->ticketingProvider->providerKey())
+            ->where('is_visible', true)
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get();
+
+        if ($funds->isEmpty()) {
+            throw new NotFoundHttpException;
+        }
+
+        return view('ticketing.donate', [
+            'siteCopy' => $this->publicSiteCopy->current(),
+            'customerSession' => $customerSession,
+            'funds' => $funds,
+        ]);
+    }
+
+    public function giftVouchers(): View
+    {
+        $customerSession = $this->ticketingProvider->customerSession();
+
+        if ($customerSession === null) {
+            throw new NotFoundHttpException;
+        }
+
+        return view('ticketing.gift-vouchers', [
+            'siteCopy' => $this->publicSiteCopy->current(),
+            'customerSession' => $customerSession,
+        ]);
+    }
+
+    public function memberships(): View
+    {
+        $customerSession = $this->ticketingProvider->customerSession();
+
+        if ($customerSession === null) {
+            throw new NotFoundHttpException;
+        }
+
+        $memberships = Membership::query()
+            ->where('provider', $this->ticketingProvider->providerKey())
+            ->where('is_visible', true)
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get();
+
+        if ($memberships->isEmpty()) {
+            throw new NotFoundHttpException;
+        }
+
+        return view('ticketing.memberships', [
+            'siteCopy' => $this->publicSiteCopy->current(),
+            'customerSession' => $customerSession,
+            'memberships' => $memberships,
+        ]);
     }
 
     public function magicLink(): View

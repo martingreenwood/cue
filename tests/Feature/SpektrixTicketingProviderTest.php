@@ -148,7 +148,10 @@ test('it configures customer session components from the active demo booking dom
         ->and($customerSession?->storedCardsUrl)->toBe('https://system.spektrix.com/apitesting/api/v3/customer/stored-cards')
         ->and($customerSession?->changePasswordUrl)->toBe('https://system.spektrix.com/apitesting/api/v3/customer/change-password')
         ->and($customerSession?->forgotPasswordUrl)->toBe('https://system.spektrix.com/apitesting/api/v3/customer/forgot-password')
-        ->and($customerSession?->deauthenticateUrl)->toBe('https://system.spektrix.com/apitesting/api/v3/customer/deauthenticate');
+        ->and($customerSession?->deauthenticateUrl)->toBe('https://system.spektrix.com/apitesting/api/v3/customer/deauthenticate')
+        ->and($customerSession?->membershipsUrl)->toBe('https://system.spektrix.com/apitesting/api/v3/memberships')
+        ->and($customerSession?->basketPotentialDiscountUrl)->toBe('https://system.spektrix.com/apitesting/api/v3/basket/potentialdiscount')
+        ->and($customerSession?->fundsUrl)->toBe('https://system.spektrix.com/apitesting/api/v3/funds');
 });
 
 test('it configures customer session components using only a confirmed custom domain', function () {
@@ -172,7 +175,10 @@ test('it configures customer session components using only a confirmed custom do
         ->and($customerSession?->storedCardsUrl)->toBe('https://tickets.newwolseytheatre.co.uk/wolsey/api/v3/customer/stored-cards')
         ->and($customerSession?->changePasswordUrl)->toBe('https://tickets.newwolseytheatre.co.uk/wolsey/api/v3/customer/change-password')
         ->and($customerSession?->forgotPasswordUrl)->toBe('https://tickets.newwolseytheatre.co.uk/wolsey/api/v3/customer/forgot-password')
-        ->and($customerSession?->deauthenticateUrl)->toBe('https://tickets.newwolseytheatre.co.uk/wolsey/api/v3/customer/deauthenticate');
+        ->and($customerSession?->deauthenticateUrl)->toBe('https://tickets.newwolseytheatre.co.uk/wolsey/api/v3/customer/deauthenticate')
+        ->and($customerSession?->membershipsUrl)->toBe('https://tickets.newwolseytheatre.co.uk/wolsey/api/v3/memberships')
+        ->and($customerSession?->basketPotentialDiscountUrl)->toBe('https://tickets.newwolseytheatre.co.uk/wolsey/api/v3/basket/potentialdiscount')
+        ->and($customerSession?->fundsUrl)->toBe('https://tickets.newwolseytheatre.co.uk/wolsey/api/v3/funds');
 });
 
 test('it builds provider-isolated customer authentication and basket journey surfaces', function () {
@@ -230,6 +236,41 @@ test('it builds a booking handoff using the numeric api performance identifier a
     expect($handoff?->url)->toBe(
         'https://system.spektrix.com/apitesting/website/ChooseSeats.aspx?EventInstanceId=112659&resize=true',
     );
+});
+
+test('it maps spektrix donation funds and memberships into cms journey data', function () {
+    Http::preventStrayRequests();
+    Http::fake([
+        '*/funds*' => Http::response([
+            [
+                'id' => 'fund-1',
+                'name' => 'Support Fund',
+                'description' => 'Keep creativity going.',
+                'code' => 'SUP',
+                'defaultDonationAmount' => 10.00,
+            ],
+        ]),
+        '*/memberships*' => Http::response([
+            [
+                'id' => 'member-1',
+                'name' => 'Supporter',
+                'description' => 'Member benefits',
+                'htmlDescription' => '<p>Member benefits</p>',
+                'imageUrl' => 'https://example.com/member.jpg',
+                'thumbnailUrl' => 'https://example.com/member-thumb.jpg',
+            ],
+        ]),
+    ]);
+
+    $provider = new SpektrixTicketingProvider;
+
+    $fund = $provider->funds()->sole();
+    $membership = $provider->memberships()->sole();
+
+    expect($fund->externalId)->toBe('fund-1')
+        ->and($fund->defaultDonationAmountMinor)->toBe(1000)
+        ->and($membership->externalId)->toBe('member-1')
+        ->and($membership->name)->toBe('Supporter');
 });
 
 test('it does not expose an invalid booking handoff without a supported identifier', function () {

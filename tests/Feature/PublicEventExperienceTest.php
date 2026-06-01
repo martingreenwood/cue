@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use App\Domains\CMS\Models\DonationFund;
+use App\Domains\CMS\Models\Membership;
 use App\Domains\CMS\Models\PublicSiteSetting;
 use App\Domains\Events\Enums\FilterGroup;
 use App\Domains\Events\Models\Event;
@@ -9,6 +11,8 @@ use App\Domains\Events\Models\EventEditorial;
 use App\Domains\Events\Models\EventRedirect;
 use App\Domains\Events\Models\FilterTerm;
 use App\Domains\Events\Models\Performance;
+use App\Domains\Ticketing\Contracts\TicketingProvider;
+use App\Domains\Ticketing\Data\CustomerSessionData;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Http;
 
@@ -22,6 +26,37 @@ beforeEach(function () {
         'ticketing.display_timezone' => 'Europe/London',
     ]);
 });
+
+function mockedCustomerSessionData(string $baseUrl = 'https://mock.provider.test'): CustomerSessionData
+{
+    return new CustomerSessionData(
+        clientName: 'mockclient',
+        customDomain: null,
+        componentLoaderUrl: "{$baseUrl}/component-loader.js",
+        customerUrl: "{$baseUrl}/api/v3/customer",
+        updateCustomerUrl: "{$baseUrl}/api/v3/customer",
+        statementsUrl: "{$baseUrl}/api/v3/statements",
+        agreedStatementsUrl: "{$baseUrl}/api/v3/customer/agreed-statements",
+        addressesUrl: "{$baseUrl}/api/v3/customer/addresses",
+        countriesUrl: "{$baseUrl}/api/v3/countries",
+        postcodeLookupUrl: "{$baseUrl}/api/v3/postcode-lookup",
+        ordersUrl: "{$baseUrl}/api/v3/customer/orders",
+        printAtHomeDocumentsUrl: "{$baseUrl}/api/v3/print-at-home-documents",
+        storedCardsUrl: "{$baseUrl}/api/v3/customer/stored-cards",
+        changePasswordUrl: "{$baseUrl}/api/v3/customer/change-password",
+        forgotPasswordUrl: "{$baseUrl}/api/v3/customer/forgot-password",
+        deauthenticateUrl: "{$baseUrl}/api/v3/customer/deauthenticate",
+        basketUrl: "{$baseUrl}/api/v3/basket",
+        basketTicketsUrl: "{$baseUrl}/api/v3/basket/tickets",
+        basketMerchandiseUrl: "{$baseUrl}/api/v3/basket/merchandise",
+        membershipsUrl: "{$baseUrl}/api/v3/memberships",
+        basketPotentialDiscountUrl: "{$baseUrl}/api/v3/basket/potentialdiscount",
+        fundsUrl: "{$baseUrl}/api/v3/funds",
+        stockItemsUrl: "{$baseUrl}/api/v3/stock-items",
+        initiateDirectPaymentUrl: "{$baseUrl}/api/v3/basket/initiate-direct-payment",
+        initiateCustomerPaymentUrl: "{$baseUrl}/api/v3/basket/initiate-customer-payment",
+    );
+}
 
 test('the public listing includes published upcoming events using editorial presentation', function () {
     Http::preventStrayRequests();
@@ -70,6 +105,13 @@ test('public pages expose Spektrix customer session status and basket count in a
         ->assertSee('data-customer-url="https://system.spektrix.com/apitesting/api/v3/customer"', false)
         ->assertSee('data-customer-logout-button', false)
         ->assertSee('data-deauthenticate-url="https://system.spektrix.com/apitesting/api/v3/customer/deauthenticate"', false)
+        ->assertSee('href="'.route('ticketing.donate').'"', false)
+        ->assertSee('href="'.route('ticketing.gift-vouchers').'"', false)
+        ->assertSee('href="'.route('ticketing.memberships').'"', false)
+        ->assertSee('Main navigation')
+        ->assertSee('Donate')
+        ->assertSee('Gift vouchers')
+        ->assertSee('Memberships')
         ->assertSee('Log in')
         ->assertSee('Log out')
         ->assertSee('Basket')
@@ -164,7 +206,261 @@ test('public account page hydrates from the provider current customer endpoint',
         ->assertSee('https://system.spektrix.com/apitesting/api/v3/customer/agreed-statements', false);
 });
 
+test('public account sections expose browser-facing provider error states for customer flows', function () {
+    $this->get(route('ticketing.account.addresses'))
+        ->assertSuccessful()
+        ->assertSee('data-account-address-error', false)
+        ->assertSee('We could not save this address. Please check the details and try again.');
+
+    $this->get(route('ticketing.account.orders'))
+        ->assertSuccessful()
+        ->assertSee('data-account-orders-status', false)
+        ->assertSee('data-account-print-at-home-documents-status', false)
+        ->assertSee('Loading order history.')
+        ->assertSee('Loading e-tickets.');
+
+    $this->get(route('ticketing.account.payments'))
+        ->assertSuccessful()
+        ->assertSee('data-account-stored-cards-status', false)
+        ->assertSee('Loading stored cards.');
+
+    $this->get(route('ticketing.account.contact-preferences'))
+        ->assertSuccessful()
+        ->assertSee('data-account-contact-preferences-error', false)
+        ->assertSee('We could not update your contact preferences. Please try again.');
+});
+
+test('public account contact preferences render browser-facing add and remove wiring from mocked provider responses', function () {
+    $provider = mock(TicketingProvider::class);
+    $provider->shouldReceive('customerSession')
+        ->andReturn(mockedCustomerSessionData());
+    app()->instance(TicketingProvider::class, $provider);
+
+    $this->get(route('ticketing.account.contact-preferences'))
+        ->assertSuccessful()
+        ->assertSee('data-account-contact-preferences-form', false)
+        ->assertSee('data-account-contact-preferences-submit', false)
+        ->assertSee('data-account-contact-preferences-feedback', false)
+        ->assertSee('data-account-contact-preferences-error', false)
+        ->assertSee('data-statements-url="https://mock.provider.test/api/v3/statements"', false)
+        ->assertSee('data-agreed-statements-url="https://mock.provider.test/api/v3/customer/agreed-statements"', false)
+        ->assertSee('action="https://mock.provider.test/api/v3/customer/agreed-statements"', false);
+});
+
+test('public account addresses render browser-facing provider wiring and loading states from mocked provider responses', function () {
+    $provider = mock(TicketingProvider::class);
+    $provider->shouldReceive('customerSession')->andReturn(mockedCustomerSessionData());
+    app()->instance(TicketingProvider::class, $provider);
+
+    $this->get(route('ticketing.account.addresses'))
+        ->assertSuccessful()
+        ->assertSee('Saved addresses')
+        ->assertSee('data-account-addresses-status', false)
+        ->assertSee('Loading saved addresses.')
+        ->assertSee('data-account-addresses', false)
+        ->assertSee('data-addresses-url="https://mock.provider.test/api/v3/customer/addresses"', false)
+        ->assertSee('data-countries-url="https://mock.provider.test/api/v3/countries"', false)
+        ->assertSee('data-postcode-lookup-url="https://mock.provider.test/api/v3/postcode-lookup"', false)
+        ->assertSee('data-account-address-new-button', false)
+        ->assertSee('data-account-address-form', false)
+        ->assertSee('data-account-address-submit', false)
+        ->assertSee('data-account-address-cancel-button', false)
+        ->assertSee('data-account-address-postcode-button', false)
+        ->assertSee('data-account-address-postcode-results', false);
+});
+
+test('public account addresses expose browser-facing validation and save failure messages from mocked provider responses', function () {
+    $provider = mock(TicketingProvider::class);
+    $provider->shouldReceive('customerSession')->andReturn(mockedCustomerSessionData());
+    app()->instance(TicketingProvider::class, $provider);
+
+    $this->get(route('ticketing.account.addresses'))
+        ->assertSuccessful()
+        ->assertSee('data-account-address-error', false)
+        ->assertSee('data-account-address-feedback', false)
+        ->assertSee('We could not save this address. Please check the details and try again.');
+});
+
+test('public account addresses expose browser-facing edit and delete flow wiring from mocked provider responses', function () {
+    $provider = mock(TicketingProvider::class);
+    $provider->shouldReceive('customerSession')->andReturn(mockedCustomerSessionData());
+    app()->instance(TicketingProvider::class, $provider);
+
+    $this->get(route('ticketing.account.addresses'))
+        ->assertSuccessful()
+        ->assertSee('data-account-addresses', false)
+        ->assertSee('data-addresses-url="https://mock.provider.test/api/v3/customer/addresses"', false)
+        ->assertSee('data-account-address-form-title', false)
+        ->assertSee('Add address')
+        ->assertSee('data-account-address-feedback', false)
+        ->assertSee('Address saved.')
+        ->assertSee('data-account-address-error', false);
+});
+
+test('public account sections expose signed-out recovery controls', function () {
+    $accountRoutes = [
+        route('ticketing.account'),
+        route('ticketing.account.addresses'),
+        route('ticketing.account.orders'),
+        route('ticketing.account.payments'),
+        route('ticketing.account.security'),
+        route('ticketing.account.contact-preferences'),
+    ];
+
+    foreach ($accountRoutes as $accountRoute) {
+        $this->get($accountRoute)
+            ->assertSuccessful()
+            ->assertSee('data-account-loading', false)
+            ->assertSee('data-account-signed-out', false)
+            ->assertSee('Sign in to continue')
+            ->assertSee('href="'.route('ticketing.login').'"', false)
+            ->assertSee('Log in')
+            ->assertSee('data-login-url="'.route('ticketing.login').'"', false);
+    }
+});
+
+test('public account contact preferences expose signed-out recovery controls with mocked provider responses', function () {
+    $provider = mock(TicketingProvider::class);
+    $provider->shouldReceive('customerSession')
+        ->andReturn(mockedCustomerSessionData());
+    app()->instance(TicketingProvider::class, $provider);
+
+    $this->get(route('ticketing.account.contact-preferences'))
+        ->assertSuccessful()
+        ->assertSee('data-account-signed-out', false)
+        ->assertSee('Sign in to continue')
+        ->assertSee('href="'.route('ticketing.login').'"', false)
+        ->assertSee('Log in')
+        ->assertSee('data-login-url="'.route('ticketing.login').'"', false);
+});
+
+test('public account addresses expose signed-out recovery controls with mocked provider responses', function () {
+    $provider = mock(TicketingProvider::class);
+    $provider->shouldReceive('customerSession')->andReturn(mockedCustomerSessionData());
+    app()->instance(TicketingProvider::class, $provider);
+
+    $this->get(route('ticketing.account.addresses'))
+        ->assertSuccessful()
+        ->assertSee('data-account-signed-out', false)
+        ->assertSee('Sign in to continue')
+        ->assertSee('href="'.route('ticketing.login').'"', false)
+        ->assertSee('Log in')
+        ->assertSee('data-login-url="'.route('ticketing.login').'"', false);
+});
+
+test('public account orders render browser-facing order history and e-ticket wiring from mocked provider responses', function () {
+    $provider = mock(TicketingProvider::class);
+    $provider->shouldReceive('customerSession')->andReturn(mockedCustomerSessionData());
+    app()->instance(TicketingProvider::class, $provider);
+
+    $this->get(route('ticketing.account.orders'))
+        ->assertSuccessful()
+        ->assertSee('Recent orders')
+        ->assertSee('E-tickets')
+        ->assertSee('data-account-orders-status', false)
+        ->assertSee('data-account-orders', false)
+        ->assertSee('data-account-print-at-home-documents-status', false)
+        ->assertSee('data-account-print-at-home-documents', false)
+        ->assertSee('Loading order history.')
+        ->assertSee('Loading e-tickets.')
+        ->assertSee('data-orders-url="https://mock.provider.test/api/v3/customer/orders"', false)
+        ->assertSee('data-print-at-home-documents-url="https://mock.provider.test/api/v3/print-at-home-documents"', false);
+});
+
+test('public account orders expose browser-facing provider error states for order detail and e-ticket flows', function () {
+    $provider = mock(TicketingProvider::class);
+    $provider->shouldReceive('customerSession')->andReturn(mockedCustomerSessionData());
+    app()->instance(TicketingProvider::class, $provider);
+
+    $this->get(route('ticketing.account.orders'))
+        ->assertSuccessful()
+        ->assertSee('data-account-orders-status', false)
+        ->assertSee('data-account-print-at-home-documents-status', false)
+        ->assertSee('Loading order history.')
+        ->assertSee('Loading e-tickets.')
+        ->assertSee('data-account-orders', false)
+        ->assertSee('data-account-print-at-home-documents', false);
+});
+
+test('public account orders expose signed-out recovery controls with mocked provider responses', function () {
+    $provider = mock(TicketingProvider::class);
+    $provider->shouldReceive('customerSession')->andReturn(mockedCustomerSessionData());
+    app()->instance(TicketingProvider::class, $provider);
+
+    $this->get(route('ticketing.account.orders'))
+        ->assertSuccessful()
+        ->assertSee('data-account-signed-out', false)
+        ->assertSee('Sign in to continue')
+        ->assertSee('href="'.route('ticketing.login').'"', false)
+        ->assertSee('Log in')
+        ->assertSee('data-login-url="'.route('ticketing.login').'"', false);
+});
+
+test('public account payments render browser-facing stored-card display wiring from mocked provider responses', function () {
+    $provider = mock(TicketingProvider::class);
+    $provider->shouldReceive('customerSession')->andReturn(mockedCustomerSessionData());
+    app()->instance(TicketingProvider::class, $provider);
+
+    $this->get(route('ticketing.account.payments'))
+        ->assertSuccessful()
+        ->assertSee('Stored cards')
+        ->assertSee('Saved payment cards are managed securely by Spektrix')
+        ->assertSee('data-account-stored-cards-status', false)
+        ->assertSee('data-account-stored-cards', false)
+        ->assertSee('Loading stored cards.')
+        ->assertSee('data-stored-cards-url="https://mock.provider.test/api/v3/customer/stored-cards"', false);
+});
+
+test('public account payments expose browser-facing pending-card inclusion controls from mocked provider responses', function () {
+    $provider = mock(TicketingProvider::class);
+    $provider->shouldReceive('customerSession')->andReturn(mockedCustomerSessionData());
+    app()->instance(TicketingProvider::class, $provider);
+
+    $this->get(route('ticketing.account.payments'))
+        ->assertSuccessful()
+        ->assertSee('data-account-stored-cards-include-pending', false)
+        ->assertSee('Include pending cards')
+        ->assertSee('data-account-stored-cards-status', false)
+        ->assertSee('data-account-stored-cards', false);
+});
+
+test('public account payments expose browser-facing stored-card removal flow wiring from mocked provider responses', function () {
+    $provider = mock(TicketingProvider::class);
+    $provider->shouldReceive('customerSession')->andReturn(mockedCustomerSessionData());
+    app()->instance(TicketingProvider::class, $provider);
+
+    $this->get(route('ticketing.account.payments'))
+        ->assertSuccessful()
+        ->assertSee('data-account-stored-cards', false)
+        ->assertSee('data-stored-cards-url="https://mock.provider.test/api/v3/customer/stored-cards"', false)
+        ->assertSee('Loading stored cards.')
+        ->assertSee('data-account-stored-cards-status', false);
+});
+
+test('public account payments expose browser-facing provider error states for stored-card flows', function () {
+    $provider = mock(TicketingProvider::class);
+    $provider->shouldReceive('customerSession')->andReturn(mockedCustomerSessionData());
+    app()->instance(TicketingProvider::class, $provider);
+
+    $this->get(route('ticketing.account.payments'))
+        ->assertSuccessful()
+        ->assertSee('data-account-stored-cards-status', false)
+        ->assertSee('Loading stored cards.')
+        ->assertSee('data-account-stored-cards', false);
+});
+
 test('public customer session links open a direct provider login form and an embedded basket page', function () {
+    DonationFund::factory()->create([
+        'provider' => 'spektrix',
+        'external_id' => 'fund-1',
+        'name' => 'Support Cue',
+    ]);
+    Membership::factory()->create([
+        'provider' => 'spektrix',
+        'external_id' => 'member-1',
+        'name' => 'Supporter',
+    ]);
+
     $this->get(route('ticketing.login'))
         ->assertSuccessful()
         ->assertSee('Log in')
@@ -228,6 +524,23 @@ test('public customer session links open a direct provider login form and an emb
         ->assertSee('https://system.spektrix.com/apitesting/website/Memberships.aspx', false)
         ->assertSee('<iframe', false);
 
+    $this->get(route('ticketing.donate'))
+        ->assertSuccessful()
+        ->assertSee('Donate')
+        ->assertSee('<spektrix-donate', false)
+        ->assertSee('fund-id="fund-1"', false);
+
+    $this->get(route('ticketing.gift-vouchers'))
+        ->assertSuccessful()
+        ->assertSee('Gift vouchers')
+        ->assertSee('<spektrix-gift-vouchers', false);
+
+    $this->get(route('ticketing.memberships'))
+        ->assertSuccessful()
+        ->assertSee('Memberships')
+        ->assertSee('<spektrix-memberships', false)
+        ->assertSee('membership-id="member-1"', false);
+
     $this->get(route('ticketing.blank'))
         ->assertSuccessful()
         ->assertSee('<body></body>', false)
@@ -267,6 +580,17 @@ test('public registration page creates a customer through the provider-isolated 
 });
 
 test('public customer session controls use the confirmed custom-domain host only', function () {
+    DonationFund::factory()->create([
+        'provider' => 'spektrix',
+        'external_id' => 'fund-1',
+        'name' => 'Support Cue',
+    ]);
+    Membership::factory()->create([
+        'provider' => 'spektrix',
+        'external_id' => 'member-1',
+        'name' => 'Supporter',
+    ]);
+
     config([
         'ticketing.providers.spektrix.customer_facing_base_url' => 'https://tickets.newwolseytheatre.co.uk/wolsey',
         'ticketing.providers.spektrix.custom_domain_confirmed' => true,
@@ -313,6 +637,7 @@ test('public customer session controls use the confirmed custom-domain host only
     $this->get(route('ticketing.basket'))
         ->assertSuccessful()
         ->assertSee('data-basket-url="https://tickets.newwolseytheatre.co.uk/wolsey/api/v3/basket"', false)
+        ->assertSee('data-basket-potential-discount-url="https://tickets.newwolseytheatre.co.uk/wolsey/api/v3/basket/potentialdiscount"', false)
         ->assertSee('data-client-name="wolsey"', false)
         ->assertDontSee('<iframe', false);
 
@@ -329,6 +654,16 @@ test('public customer session controls use the confirmed custom-domain host only
     $this->get(route('ticketing.renew'))
         ->assertSuccessful()
         ->assertSee('https://tickets.newwolseytheatre.co.uk/wolsey/website/Memberships.aspx', false);
+
+    $this->get(route('ticketing.donate'))
+        ->assertSuccessful()
+        ->assertSee('custom-domain="tickets.newwolseytheatre.co.uk"', false)
+        ->assertSee('<spektrix-donate', false);
+
+    $this->get(route('ticketing.memberships'))
+        ->assertSuccessful()
+        ->assertSee('custom-domain="tickets.newwolseytheatre.co.uk"', false)
+        ->assertSee('<spektrix-memberships', false);
 });
 
 test('public availability and booking wording may be customised through site settings', function () {
@@ -381,6 +716,11 @@ test('public availability and booking wording may be customised through site set
         ->assertSee('Prices vary')
         ->assertSee('Check now')
         ->assertSee('Find seats');
+});
+
+test('donate and memberships pages return not found when no funds or memberships are configured', function () {
+    $this->get(route('ticketing.donate'))->assertNotFound();
+    $this->get(route('ticketing.memberships'))->assertNotFound();
 });
 
 test('linked event artwork is named and subsequent listing images defer loading', function () {
@@ -787,7 +1127,7 @@ test('selecting an available performance renders its Spektrix booking iframe in 
     ]);
     $performance = Performance::factory()->for($event)->create([
         'external_id' => '112659AKSSQTLRRKDQBVSTLTJPSGVLTTN',
-        'starts_at' => CarbonImmutable::parse('2026-05-29T18:00:00Z'),
+        'starts_at' => CarbonImmutable::parse('2027-05-29T18:00:00Z'),
     ]);
 
     $this->get(route('events.show', [
@@ -796,7 +1136,7 @@ test('selecting an available performance renders its Spektrix booking iframe in 
     ]))
         ->assertSuccessful()
         ->assertSee('Secure booking')
-        ->assertSee('Check current availability and final prices securely with Spektrix for Friday 29 May 2026 at 7:00pm.')
+        ->assertSee('Check current availability and final prices securely with Spektrix for Saturday 29 May 2027 at 7:00pm.')
         ->assertSee('id="SpektrixIFrame"', false)
         ->assertSee('name="SpektrixIFrame"', false)
         ->assertSee('https://system.spektrix.com/apitesting/website/ChooseSeats.aspx?EventInstanceId=112659&amp;resize=true', false)

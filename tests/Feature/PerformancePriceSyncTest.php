@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Domains\Events\Actions\SyncPerformancePricesAction;
 use App\Domains\Events\Enums\SyncRunStatus;
 use App\Domains\Events\Jobs\SyncTicketingPerformancePrices;
+use App\Domains\Events\Models\AvailabilitySnapshot;
 use App\Domains\Events\Models\Performance;
 use App\Domains\Events\Models\PerformancePrice;
 use App\Domains\Events\Models\SyncRun;
@@ -144,6 +145,24 @@ test('the command does not dispatch overlapping performance price refresh runs',
         ->assertSuccessful();
 
     expect(SyncRun::query()->count())->toBe(1);
+
+    Bus::assertNothingBatched();
+});
+
+test('the command captures an availability snapshot when no performances are eligible', function () {
+    Bus::fake();
+
+    Performance::factory()->create([
+        'starts_at' => now()->subDay(),
+        'is_on_sale' => true,
+        'is_cancelled' => false,
+    ]);
+
+    $this->artisan('ticketing:sync-prices')->assertSuccessful();
+
+    expect(SyncRun::query()->sole()->status)->toBe(SyncRunStatus::Succeeded)
+        ->and(AvailabilitySnapshot::query()->count())->toBe(1)
+        ->and(AvailabilitySnapshot::query()->sole()->future_on_sale_total)->toBe(0);
 
     Bus::assertNothingBatched();
 });

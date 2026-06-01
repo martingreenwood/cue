@@ -27,6 +27,18 @@ return [
         'zero_price_display' => env('TICKETING_ZERO_PRICE_DISPLAY', 'free'),
     ],
 
+    'journeys' => [
+        'sync_enabled' => (bool) env('TICKETING_JOURNEY_SYNC_ENABLED', false),
+        'sync_cron' => env('TICKETING_JOURNEY_SYNC_CRON', '*/30 * * * *'),
+        'retry_attempts' => (int) env('TICKETING_JOURNEY_SYNC_RETRY_ATTEMPTS', 3),
+        'retry_backoff_seconds' => array_values(array_filter(array_map(
+            static fn (string $value): int => max((int) trim($value), 1),
+            explode(',', (string) env('TICKETING_JOURNEY_SYNC_RETRY_BACKOFF_SECONDS', '10,30')),
+        ))),
+        'stale_after_minutes' => (int) env('TICKETING_JOURNEY_STALE_AFTER_MINUTES', 180),
+        'stale_alert_cooldown_minutes' => (int) env('TICKETING_JOURNEY_STALE_ALERT_COOLDOWN_MINUTES', 60),
+    ],
+
     'providers' => [
         'spektrix' => [
             'base_url' => env('SPEKTRIX_API_BASE_URL'),

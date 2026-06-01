@@ -10,7 +10,9 @@ use Filament\Widgets\StatsOverviewWidget\Stat;
 
 class SpektrixBookingDomainHealthWidget extends StatsOverviewWidget
 {
-    protected static ?int $sort = 3;
+    protected static ?int $sort = 5;
+
+    protected int|string|array $columnSpan = 2;
 
     protected ?string $pollingInterval = null;
 

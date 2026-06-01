@@ -16,7 +16,10 @@ use Throwable;
 
 final class QueuePerformancePriceSyncAction
 {
-    public function __construct(private readonly TicketingProvider $provider) {}
+    public function __construct(
+        private readonly TicketingProvider $provider,
+        private readonly CaptureAvailabilitySnapshotAction $captureAvailabilitySnapshot,
+    ) {}
 
     public function execute(?int $performanceId = null): SyncRun
     {
@@ -54,6 +57,8 @@ final class QueuePerformancePriceSyncAction
                 'finished_at' => now(),
             ]);
 
+            $this->captureAvailabilitySnapshot->execute((int) $syncRun->getKey());
+
             return $syncRun->refresh();
         }
 
@@ -85,6 +90,7 @@ final class QueuePerformancePriceSyncAction
                 })
                 ->finally(function (Batch $batch) use ($syncRunId): void {
                     SyncRun::query()->whereKey($syncRunId)->update(['finished_at' => now()]);
+                    $this->captureAvailabilitySnapshot->execute($syncRunId);
                 })
                 ->dispatch();
         } catch (Throwable $exception) {

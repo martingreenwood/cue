@@ -135,6 +135,19 @@ class ContentStrings extends Page
                                 ->required()
                                 ->rows(2)
                                 ->columnSpanFull(),
+                            TextInput::make('customer_donate_label')
+                                ->label('Donate link label')
+                                ->required()
+                                ->maxLength(255),
+                            TextInput::make('customer_gift_vouchers_label')
+                                ->label('Gift vouchers link label')
+                                ->required()
+                                ->maxLength(255),
+                            TextInput::make('customer_memberships_label')
+                                ->label('Memberships link label')
+                                ->required()
+                                ->maxLength(255)
+                                ->columnSpanFull(),
                         ]),
                     ])
                     ->columnSpanFull(),
@@ -159,7 +172,10 @@ class ContentStrings extends Page
          *     customer_logged_in_label: string,
          *     customer_logged_out_label: string,
          *     customer_basket_label: string,
-         *     basket_membership_upsell: string
+         *     basket_membership_upsell: string,
+         *     customer_donate_label: string,
+         *     customer_gift_vouchers_label: string,
+         *     customer_memberships_label: string
          * } $data
          */
         $data = $this->form->getState();

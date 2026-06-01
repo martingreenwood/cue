@@ -23,3 +23,9 @@ Schedule::command('ticketing:sync-prices')
     ->when(fn (): bool => (bool) config('ticketing.pricing.sync_enabled', false))
     ->withoutOverlapping()
     ->onOneServer();
+
+Schedule::command('ticketing:sync-journeys')
+    ->cron((string) config('ticketing.journeys.sync_cron', '*/30 * * * *'))
+    ->when(fn (): bool => (bool) config('ticketing.journeys.sync_enabled', false))
+    ->withoutOverlapping()
+    ->onOneServer();

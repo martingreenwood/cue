@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Domains\Events\Actions\SyncCatalogueAction;
 use App\Domains\Events\Enums\SyncRunStatus;
+use App\Domains\Events\Models\AvailabilitySnapshot;
 use App\Domains\Events\Models\Event;
 use App\Domains\Events\Models\Performance;
 use App\Domains\Events\Models\SyncRun;
@@ -33,7 +34,8 @@ test('it stores and updates a local catalogue idempotently', function () {
         ->and($completed->events_synced)->toBe(1)
         ->and($completed->performances_synced)->toBe(1)
         ->and(Event::query()->count())->toBe(1)
-        ->and(Performance::query()->count())->toBe(1);
+        ->and(Performance::query()->count())->toBe(1)
+        ->and(AvailabilitySnapshot::query()->count())->toBe(1);
 
     $event = Event::query()->sole();
     $originalSlug = $event->slug;

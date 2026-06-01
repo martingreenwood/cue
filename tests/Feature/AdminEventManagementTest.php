@@ -80,6 +80,10 @@ test('editors may customise public availability and booking language', function 
             'customer_logged_in_label' => 'Hello',
             'customer_logged_out_label' => 'Log in to your account',
             'customer_basket_label' => 'My basket',
+            'basket_membership_upsell' => 'Log in for member savings.',
+            'customer_donate_label' => 'Support us',
+            'customer_gift_vouchers_label' => 'Buy gift vouchers',
+            'customer_memberships_label' => 'Join membership',
         ])
         ->call('save')
         ->assertHasNoFormErrors()
@@ -91,7 +95,10 @@ test('editors may customise public availability and booking language', function 
         ->and($settings->booking_cta_label)->toBe('Select seats')
         ->and($settings->footer_availability_notice)->toBe('Ticket availability is confirmed at booking.')
         ->and($settings->customer_logged_out_label)->toBe('Log in to your account')
-        ->and($settings->customer_basket_label)->toBe('My basket');
+        ->and($settings->customer_basket_label)->toBe('My basket')
+        ->and($settings->customer_donate_label)->toBe('Support us')
+        ->and($settings->customer_gift_vouchers_label)->toBe('Buy gift vouchers')
+        ->and($settings->customer_memberships_label)->toBe('Join membership');
 });
 
 test('editors may define public filter terms', function () {

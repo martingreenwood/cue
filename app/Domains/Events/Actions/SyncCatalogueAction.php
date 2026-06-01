@@ -21,7 +21,10 @@ use Throwable;
 
 final class SyncCatalogueAction
 {
-    public function __construct(private readonly TicketingProvider $provider) {}
+    public function __construct(
+        private readonly TicketingProvider $provider,
+        private readonly CaptureAvailabilitySnapshotAction $captureAvailabilitySnapshot,
+    ) {}
 
     public function execute(SyncRun $syncRun): SyncRun
     {
@@ -82,6 +85,8 @@ final class SyncCatalogueAction
                 'performances_synced' => $performances->count(),
                 'error_message' => null,
             ]);
+
+            $this->captureAvailabilitySnapshot->execute((int) $syncRun->getKey());
         } catch (Throwable $exception) {
             $syncRun->update([
                 'status' => SyncRunStatus::Failed,

@@ -44,6 +44,20 @@
                     {{ $siteCopy->customerBasketLabel }} (<span data-basket-item-count>0</span>)
                 </a>
             </spektrix-basket-summary>
+
+            <span aria-hidden="true" class="h-5 w-px bg-[#fdf7ee]/25"></span>
+
+            <a href="{{ route('ticketing.donate') }}" class="inline-flex min-h-11 items-center hover:text-[#e5c8b8] focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#fdf7ee]">
+                {{ $siteCopy->customerDonateLabel }}
+            </a>
+
+            <a href="{{ route('ticketing.gift-vouchers') }}" class="inline-flex min-h-11 items-center hover:text-[#e5c8b8] focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#fdf7ee]">
+                {{ $siteCopy->customerGiftVouchersLabel }}
+            </a>
+
+            <a href="{{ route('ticketing.memberships') }}" class="inline-flex min-h-11 items-center hover:text-[#e5c8b8] focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#fdf7ee]">
+                {{ $siteCopy->customerMembershipsLabel }}
+            </a>
         </div>
     </aside>
 @endif

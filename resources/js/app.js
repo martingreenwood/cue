@@ -1660,7 +1660,13 @@ const basketVal = (obj, key) => {
 const renderBasketSavings = (basket, section) => {
     const savingsEl = section.querySelector('[data-basket-savings]');
     const offersEl = section.querySelector('[data-basket-offers]');
+    // Pre-fill the promo input if a code is already applied (it lives outside this section).
     const promoInput = section.querySelector('[name="promoCode"]');
+    const promoCode = basketVal(basket, 'promoCode');
+
+    if (promoInput !== null && typeof promoCode === 'string' && promoCode !== '') {
+        promoInput.value = promoCode;
+    }
 
     if (savingsEl === null) {
         return;
@@ -1669,15 +1675,9 @@ const renderBasketSavings = (basket, section) => {
     const potentialOffers = basketVal(basket, 'potentialOffers') || [];
     const multibuyOffers = basketVal(basket, 'multibuyOffers') || [];
     const appliedOffers = basketVal(basket, 'offers') || [];
-    const promoCode = basketVal(basket, 'promoCode');
     const hasOffers = (Array.isArray(potentialOffers) && potentialOffers.length > 0)
         || (Array.isArray(multibuyOffers) && multibuyOffers.length > 0)
-        || (Array.isArray(appliedOffers) && appliedOffers.length > 0)
-        || (typeof promoCode === 'string' && promoCode !== '');
-
-    if (promoInput !== null && typeof promoCode === 'string' && promoCode !== '') {
-        promoInput.value = promoCode;
-    }
+        || (Array.isArray(appliedOffers) && appliedOffers.length > 0);
 
     if (!hasOffers) {
         savingsEl.hidden = true;
@@ -1746,6 +1746,68 @@ const renderBasketMembershipUpsell = (basket, section) => {
 
     if (loginLink !== null) {
         loginLink.href = section.dataset.loginUrl || '#';
+    }
+};
+
+const enrichMembershipUpsell = async (basket, section) => {
+    const customer = basketVal(basket, 'customer');
+    const isLoggedIn = customer !== null && typeof customer === 'object' && basketVal(customer, 'id') !== null;
+    const copy = section.querySelector('[data-basket-membership-upsell-copy]');
+
+    if (isLoggedIn || copy === null) {
+        return;
+    }
+
+    const membershipsUrl = section.dataset.membershipsUrl;
+    const potentialDiscountUrl = section.dataset.basketPotentialDiscountUrl;
+
+    if (membershipsUrl === undefined || potentialDiscountUrl === undefined) {
+        return;
+    }
+
+    try {
+        const membershipsResponse = await providerGet(membershipsUrl);
+
+        if (!membershipsResponse.ok) {
+            return;
+        }
+
+        const memberships = await membershipsResponse.json();
+
+        if (!Array.isArray(memberships) || memberships.length === 0) {
+            return;
+        }
+
+        const requests = memberships
+            .map((membership) => basketVal(membership, 'id'))
+            .filter((id) => typeof id === 'string' && id !== '')
+            .map((membershipId) => {
+                const url = new URL(potentialDiscountUrl);
+                url.searchParams.set('membershipId', membershipId);
+
+                return providerGet(url.toString())
+                    .then(async (response) => (response.ok ? response.json() : null))
+                    .then((payload) => ({
+                        membershipName: basketVal(memberships.find((membership) => basketVal(membership, 'id') === membershipId), 'name') || 'membership',
+                        totalDiscount: Number(basketVal(payload, 'totalDiscount') || 0),
+                    }))
+                    .catch(() => null);
+            });
+
+        const results = (await Promise.all(requests)).filter((result) => result !== null);
+
+        if (results.length === 0) {
+            return;
+        }
+
+        results.sort((left, right) => right.totalDiscount - left.totalDiscount);
+        const best = results[0];
+
+        if (best.totalDiscount > 0) {
+            copy.textContent = `Join ${best.membershipName} and save ${formatBasketMoney(best.totalDiscount)} on this order.`;
+        }
+    } catch {
+        // Keep static copy on provider failures.
     }
 };
 
@@ -2055,6 +2117,7 @@ const renderBasket = (basket, stockItems, section) => {
     renderBasketTickets(basket, section);
     renderBasketTotals(basket, section);
     renderBasketMerchandise(stockItems, section);
+    void enrichMembershipUpsell(basket, section);
 };
 
 const reloadBasket = async (section) => {

@@ -39,6 +39,10 @@ class PublicSiteSettingFactory extends Factory
             'customer_logged_in_label' => null,
             'customer_logged_out_label' => null,
             'customer_basket_label' => null,
+            'basket_membership_upsell' => null,
+            'customer_donate_label' => null,
+            'customer_gift_vouchers_label' => null,
+            'customer_memberships_label' => null,
         ];
     }
 }

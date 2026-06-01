@@ -25,7 +25,10 @@ final class PublicSiteCopyService
      *     customer_logged_in_label: string,
      *     customer_logged_out_label: string,
      *     customer_basket_label: string,
-     *     basket_membership_upsell: string
+     *     basket_membership_upsell: string,
+     *     customer_donate_label: string,
+     *     customer_gift_vouchers_label: string,
+     *     customer_memberships_label: string
      * }
      */
     private const array Defaults = [
@@ -44,6 +47,9 @@ final class PublicSiteCopyService
         'customer_logged_out_label' => 'Log in',
         'customer_basket_label' => 'Basket',
         'basket_membership_upsell' => 'If you hold a membership, log in and any eligible discounts will be applied to your order automatically.',
+        'customer_donate_label' => 'Donate',
+        'customer_gift_vouchers_label' => 'Gift vouchers',
+        'customer_memberships_label' => 'Memberships',
     ];
 
     public function current(): PublicSiteCopyData
@@ -66,6 +72,9 @@ final class PublicSiteCopyService
             customerLoggedOutLabel: $this->value($settings?->customer_logged_out_label, 'customer_logged_out_label'),
             customerBasketLabel: $this->value($settings?->customer_basket_label, 'customer_basket_label'),
             basketMembershipUpsell: $this->value($settings?->basket_membership_upsell, 'basket_membership_upsell'),
+            customerDonateLabel: $this->value($settings?->customer_donate_label, 'customer_donate_label'),
+            customerGiftVouchersLabel: $this->value($settings?->customer_gift_vouchers_label, 'customer_gift_vouchers_label'),
+            customerMembershipsLabel: $this->value($settings?->customer_memberships_label, 'customer_memberships_label'),
         );
     }
 
@@ -85,7 +94,10 @@ final class PublicSiteCopyService
      *     customer_logged_in_label: string,
      *     customer_logged_out_label: string,
      *     customer_basket_label: string,
-     *     basket_membership_upsell: string
+     *     basket_membership_upsell: string,
+     *     customer_donate_label: string,
+     *     customer_gift_vouchers_label: string,
+     *     customer_memberships_label: string
      * }  $data
      */
     public function update(array $data): PublicSiteSetting

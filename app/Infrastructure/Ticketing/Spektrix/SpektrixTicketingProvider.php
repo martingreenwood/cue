@@ -11,6 +11,8 @@ use App\Domains\Ticketing\Data\CustomerAuthenticationData;
 use App\Domains\Ticketing\Data\CustomerJourneyData;
 use App\Domains\Ticketing\Data\CustomerSessionData;
 use App\Domains\Ticketing\Data\EventData;
+use App\Domains\Ticketing\Data\FundData;
+use App\Domains\Ticketing\Data\MembershipData;
 use App\Domains\Ticketing\Data\PerformanceData;
 use App\Domains\Ticketing\Data\PerformancePriceData;
 use App\Domains\Ticketing\Enums\CustomerJourney;
@@ -116,6 +118,24 @@ final class SpektrixTicketingProvider implements TicketingProvider
             'startFrom' => $from->toDateString(),
             'startTo' => $until->toDateString(),
         ]))->map(fn (array $payload): PerformanceData => $this->mapPerformance($payload));
+    }
+
+    /**
+     * @return Collection<int, FundData>
+     */
+    public function funds(): Collection
+    {
+        return collect($this->request('funds', []))
+            ->map(fn (array $payload): FundData => $this->mapFund($payload));
+    }
+
+    /**
+     * @return Collection<int, MembershipData>
+     */
+    public function memberships(): Collection
+    {
+        return collect($this->request('memberships', []))
+            ->map(fn (array $payload): MembershipData => $this->mapMembership($payload));
     }
 
     /**
@@ -277,6 +297,37 @@ final class SpektrixTicketingProvider implements TicketingProvider
     /**
      * @param  array<string, mixed>  $payload
      */
+    private function mapFund(array $payload): FundData
+    {
+        return new FundData(
+            externalId: $this->requiredString($payload, 'id'),
+            name: $this->requiredString($payload, 'name'),
+            description: $this->nullableString($payload, 'description'),
+            code: $this->nullableString($payload, 'code'),
+            defaultDonationAmountMinor: $this->amountMinorOrNull($payload['defaultDonationAmount'] ?? null),
+            sourcePayload: $payload,
+        );
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    private function mapMembership(array $payload): MembershipData
+    {
+        return new MembershipData(
+            externalId: $this->requiredString($payload, 'id'),
+            name: $this->requiredString($payload, 'name'),
+            description: $this->nullableString($payload, 'description'),
+            htmlDescription: $this->nullableString($payload, 'htmlDescription'),
+            imageUrl: $this->nullableString($payload, 'imageUrl'),
+            thumbnailUrl: $this->nullableString($payload, 'thumbnailUrl'),
+            sourcePayload: $payload,
+        );
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     */
     private function requiredString(array $payload, string $key): string
     {
         $value = $payload[$key] ?? null;
@@ -322,6 +373,15 @@ final class SpektrixTicketingProvider implements TicketingProvider
         [$major, $minor] = array_pad(explode('.', $amount, 2), 2, '');
 
         return ((int) $major * 100) + (int) str_pad($minor, 2, '0');
+    }
+
+    private function amountMinorOrNull(mixed $amount): ?int
+    {
+        if ($amount === null || $amount === '') {
+            return null;
+        }
+
+        return $this->amountMinor($amount);
     }
 
     private function currency(): string

@@ -22,6 +22,9 @@ final readonly class PublicSiteCopyData
         public string $customerLoggedOutLabel,
         public string $customerBasketLabel,
         public string $basketMembershipUpsell,
+        public string $customerDonateLabel,
+        public string $customerGiftVouchersLabel,
+        public string $customerMembershipsLabel,
     ) {}
 
     /**
@@ -40,7 +43,10 @@ final readonly class PublicSiteCopyData
      *     customer_logged_in_label: string,
      *     customer_logged_out_label: string,
      *     customer_basket_label: string,
-     *     basket_membership_upsell: string
+     *     basket_membership_upsell: string,
+     *     customer_donate_label: string,
+     *     customer_gift_vouchers_label: string,
+     *     customer_memberships_label: string
      * }
      */
     public function toArray(): array
@@ -61,6 +67,9 @@ final readonly class PublicSiteCopyData
             'customer_logged_out_label' => $this->customerLoggedOutLabel,
             'customer_basket_label' => $this->customerBasketLabel,
             'basket_membership_upsell' => $this->basketMembershipUpsell,
+            'customer_donate_label' => $this->customerDonateLabel,
+            'customer_gift_vouchers_label' => $this->customerGiftVouchersLabel,
+            'customer_memberships_label' => $this->customerMembershipsLabel,
         ];
     }
 }

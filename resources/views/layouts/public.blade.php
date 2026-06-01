@@ -43,9 +43,18 @@
                 <a href="{{ route('events.index') }}" class="inline-flex min-h-11 min-w-11 items-center text-2xl font-semibold tracking-[-0.05em] focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#a4432e]">
                     Cue
                 </a>
-                <nav aria-label="Main navigation">
+                <nav aria-label="Main navigation" class="flex flex-wrap items-center justify-end gap-x-6 gap-y-2">
                     <a href="{{ route('events.index') }}" class="inline-flex min-h-11 items-center text-sm font-medium uppercase tracking-[0.18em] text-[#5d5549] hover:text-[#171511] focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#a4432e]">
                         What is on
+                    </a>
+                    <a href="{{ route('ticketing.donate') }}" class="inline-flex min-h-11 items-center text-sm font-medium uppercase tracking-[0.18em] text-[#5d5549] hover:text-[#171511] focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#a4432e]">
+                        {{ $siteCopy->customerDonateLabel }}
+                    </a>
+                    <a href="{{ route('ticketing.gift-vouchers') }}" class="inline-flex min-h-11 items-center text-sm font-medium uppercase tracking-[0.18em] text-[#5d5549] hover:text-[#171511] focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#a4432e]">
+                        {{ $siteCopy->customerGiftVouchersLabel }}
+                    </a>
+                    <a href="{{ route('ticketing.memberships') }}" class="inline-flex min-h-11 items-center text-sm font-medium uppercase tracking-[0.18em] text-[#5d5549] hover:text-[#171511] focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#a4432e]">
+                        {{ $siteCopy->customerMembershipsLabel }}
                     </a>
                 </nav>
             </div>

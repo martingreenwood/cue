@@ -32,6 +32,9 @@ class PublicSiteSetting extends Model
         'customer_logged_out_label',
         'customer_basket_label',
         'basket_membership_upsell',
+        'customer_donate_label',
+        'customer_gift_vouchers_label',
+        'customer_memberships_label',
     ];
 
     protected static function newFactory(): PublicSiteSettingFactory

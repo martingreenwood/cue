@@ -11,9 +11,7 @@ use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
 use Filament\Notifications\Notification;
 use Filament\Tables\Columns\IconColumn;
-use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Enums\RecordActionsPosition;
 use Filament\Tables\Table;
 
 class EventsTable
@@ -22,17 +20,11 @@ class EventsTable
     {
         return $table
             ->columns([
-                ImageColumn::make('local_image_path')
-                    ->label('')
-                    ->disk('public')
-                    ->height(36)
-                    ->width(48)
-                    ->defaultImageUrl(null),
                 TextColumn::make('title')
                     ->label('Event')
                     ->state(fn (Event $record): string => $record->editorial?->title ?: $record->title)
                     ->description(fn (Event $record): ?string => $record->editorial?->title ? 'Source: '.$record->title : null)
-                    ->limit(42)
+                    ->limit(60)
                     ->searchable()
                     ->sortable(),
                 IconColumn::make('editorial.is_published')
@@ -88,7 +80,7 @@ class EventsTable
                     }),
                 ViewAction::make(),
                 EditAction::make(),
-            ], position: RecordActionsPosition::BeforeColumns)
+            ])
             ->defaultSort('last_performance_at');
     }
 
