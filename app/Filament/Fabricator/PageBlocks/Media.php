@@ -2,9 +2,9 @@
 
 namespace App\Filament\Fabricator\PageBlocks;
 
+use App\Filament\Fabricator\Support\PageBlockFields;
 use Filament\Forms\Components\Builder\Block;
 use Filament\Forms\Components\Textarea;
-use Filament\Forms\Components\TextInput;
 use Z3d0X\FilamentFabricator\PageBlocks\PageBlock;
 
 class Media extends PageBlock
@@ -15,21 +15,16 @@ class Media extends PageBlock
     {
         return $block
             ->schema([
-                TextInput::make('media_url')
-                    ->label('Media URL')
-                    ->url()
-                    ->required(),
-                TextInput::make('media_alt')
-                    ->label('Media alt text')
-                    ->maxLength(255),
+                ...PageBlockFields::mediaAsset(),
                 Textarea::make('caption')
                     ->rows(2)
-                    ->maxLength(300),
+                    ->maxLength(300)
+                    ->columnSpanFull(),
             ]);
     }
 
     public static function mutateData(array $data): array
     {
-        return $data;
+        return PageBlockFields::normalizeMediaData($data);
     }
 }

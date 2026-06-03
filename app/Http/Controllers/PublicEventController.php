@@ -5,10 +5,13 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Domains\CMS\Services\PublicSiteCopyService;
+use App\Domains\Events\Data\PublicEventData;
 use App\Domains\Events\Services\PublicEventCatalogueService;
 use App\Domains\Ticketing\Contracts\TicketingProvider;
 use App\Http\Requests\PublicEventIndexRequest;
 use App\Http\Requests\PublicEventShowRequest;
+use App\Http\Requests\PublicEventSuggestionsRequest;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
@@ -31,6 +34,24 @@ final class PublicEventController extends Controller
             'filterOptions' => $this->catalogue->filterOptions(),
             'siteCopy' => $this->publicSiteCopy->current(),
             'customerSession' => $this->ticketingProvider->customerSession(),
+        ]);
+    }
+
+    public function suggestions(PublicEventSuggestionsRequest $request): JsonResponse
+    {
+        $term = $request->searchTerm();
+
+        return response()->json([
+            'results' => $this->catalogue
+                ->suggestUpcoming($term)
+                ->map(fn (PublicEventData $event): array => [
+                    'title' => $event->title,
+                    'summary' => $event->summary,
+                    'dateLabel' => $event->firstPerformanceAt?->format('j M Y'),
+                    'url' => route('events.show', ['slug' => $event->slug]),
+                ])
+                ->values(),
+            'resultsUrl' => route('events.index', ['q' => $term]),
         ]);
     }
 

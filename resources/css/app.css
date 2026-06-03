@@ -11,6 +11,352 @@
 }
 
 @layer components {
+    * {
+        @apply outline-0
+    }
+
+    :root {
+        --cue-accessibility-scale: 1;
+        --cue-accessibility-font-size: 1;
+        --cue-accessibility-line-height: 1.6;
+        --cue-accessibility-letter-spacing: 0em;
+        --cue-accessibility-text-align: initial;
+        --cue-accessibility-justify-content: normal;
+        --cue-accessibility-justify-items: normal;
+        --cue-accessibility-mask-y: 50vh;
+    }
+
+    html {
+        font-size: calc(16px * var(--cue-accessibility-scale) * var(--cue-accessibility-font-size));
+    }
+
+    body {
+        line-height: var(--cue-accessibility-line-height);
+        letter-spacing: var(--cue-accessibility-letter-spacing);
+        text-align: var(--cue-accessibility-text-align);
+    }
+
+    body :where(h1, h2, h3, h4, h5, h6, p, a, button, label, legend, li, span, small, strong, em, blockquote, figcaption, input, textarea, select, option, summary, th, td, dt, dd, code, pre) {
+        line-height: var(--cue-accessibility-line-height) !important;
+        letter-spacing: var(--cue-accessibility-letter-spacing) !important;
+    }
+
+    html[data-accessibility-text-align] body :where(h1, h2, h3, h4, h5, h6, p, a, button, label, legend, li, span, small, strong, em, blockquote, figcaption, input, textarea, select, option, summary, th, td, dt, dd, code, pre),
+    html[data-accessibility-text-align] body :where(main, section, article, aside, header, footer, nav, div, ul, ol, dl, table, form, fieldset) {
+        text-align: var(--cue-accessibility-text-align) !important;
+    }
+
+    html[data-accessibility-text-align] body :where([class~='flex'], [class~='inline-flex']) {
+        justify-content: var(--cue-accessibility-justify-content) !important;
+    }
+
+    html[data-accessibility-text-align] body :where([class~='grid'], [class~='inline-grid']) {
+        justify-content: var(--cue-accessibility-justify-content) !important;
+        justify-items: var(--cue-accessibility-justify-items) !important;
+    }
+
+    html[data-accessibility-readable-font='true'] body :where(main, section, article, aside, header, footer, nav, div, ul, ol, dl, table, form, fieldset) {
+        font-family: Atkinson Hyperlegible, Verdana, Arial, sans-serif;
+    }
+
+    html[data-accessibility-highlight-titles='true'] :is(h1, h2, h3, h4, h5, h6) {
+        background: #f7d488;
+        box-decoration-break: clone;
+        color: #171511;
+        outline: 0.14em solid #f7d488;
+    }
+
+    html[data-accessibility-highlight-links='true'] :is(a, [role='link']) {
+        background-color: #f7d488 !important;
+        border-color: #171511 !important;
+        box-shadow: 0 0 0 0.18em #f7d488 !important;
+        color: #171511 !important;
+        text-decoration-thickness: 0.16em;
+        text-underline-offset: 0.18em;
+    }
+
+    html[data-accessibility-highlight-links='true'] :is(a, [role='link']) * {
+        color: #171511 !important;
+        fill: #171511 !important;
+        stroke: #171511 !important;
+    }
+
+    html[data-accessibility-colour='dark'] body {
+        background: #050505 !important;
+        color: #ffffff !important;
+    }
+
+    html[data-accessibility-colour='dark'] :is(header, footer, main, section, article, aside, nav, div, ul, ol, li, dl, dt, dd, form, fieldset, details, summary),
+    html[data-accessibility-colour='dark'] :is(h1, h2, h3, h4, h5, h6, p, span, small, strong, em, blockquote, figcaption, label, legend, th, td, code, pre) {
+        background-color: #050505 !important;
+        border-color: #ffffff !important;
+        box-shadow: none !important;
+        color: #ffffff !important;
+    }
+
+    html[data-accessibility-colour='dark'] :is(a, button) {
+        background-color: #050505 !important;
+        border-color: #ffff00 !important;
+        box-shadow: none !important;
+        color: #ffff00 !important;
+    }
+
+    html[data-accessibility-colour='dark'] :is(a, button) * {
+        color: #ffff00 !important;
+        fill: #ffff00 !important;
+        stroke: #ffff00 !important;
+    }
+
+    html[data-accessibility-colour='dark'] :is(input, select, textarea, option) {
+        background: #050505 !important;
+        border-color: #ffffff !important;
+        color: #ffffff !important;
+    }
+
+    html[data-accessibility-colour='high'] body {
+        background: #000000 !important;
+        color: #ffff00 !important;
+    }
+
+    html[data-accessibility-colour='high'] :is(header, footer, main, section, article, aside, nav, div, ul, ol, li, dl, dt, dd, form, fieldset, details, summary),
+    html[data-accessibility-colour='high'] :is(h1, h2, h3, h4, h5, h6, p, span, small, strong, em, blockquote, figcaption, label, legend, th, td, code, pre) {
+        background-color: #000000 !important;
+        border-color: #ffff00 !important;
+        box-shadow: none !important;
+        color: #ffff00 !important;
+        text-shadow: none !important;
+    }
+
+    html[data-accessibility-colour='high'] :is(a, button) {
+        background-color: #000000 !important;
+        border-color: #00ffff !important;
+        box-shadow: none !important;
+        color: #00ffff !important;
+        text-decoration-color: #00ffff !important;
+    }
+
+    html[data-accessibility-colour='high'] :is(a, button) * {
+        color: #00ffff !important;
+        fill: #00ffff !important;
+        stroke: #00ffff !important;
+    }
+
+    html[data-accessibility-colour='high'] :is(input, select, textarea, option) {
+        background: #000000 !important;
+        border-color: #ffff00 !important;
+        color: #ffff00 !important;
+    }
+
+    html[data-accessibility-colour='light'] body {
+        background: #ffffff !important;
+        color: #000000 !important;
+    }
+
+    html[data-accessibility-colour='light'] :is(header, footer, main, section, article, aside, nav, div, ul, ol, li, dl, dt, dd, form, fieldset, details, summary),
+    html[data-accessibility-colour='light'] :is(h1, h2, h3, h4, h5, h6, p, span, small, strong, em, blockquote, figcaption, label, legend, th, td, code, pre) {
+        background-color: #ffffff !important;
+        border-color: #000000 !important;
+        box-shadow: none !important;
+        color: #000000 !important;
+    }
+
+    html[data-accessibility-colour='light'] :is(a, button) {
+        background-color: #ffffff !important;
+        border-color: #0000ee !important;
+        box-shadow: none !important;
+        color: #0000ee !important;
+    }
+
+    html[data-accessibility-colour='light'] :is(a, button) * {
+        color: #0000ee !important;
+        fill: #0000ee !important;
+        stroke: #0000ee !important;
+    }
+
+    html[data-accessibility-colour='light'] :is(input, select, textarea, option) {
+        background: #ffffff !important;
+        border-color: #000000 !important;
+        color: #000000 !important;
+    }
+
+    html[data-accessibility-colour='high-saturation'] body > :not([data-accessibility-toolbar]) {
+        filter: saturate(2.75) contrast(1.18);
+    }
+
+    html[data-accessibility-colour='high-saturation'] :is(a, button) {
+        filter: saturate(2.2) contrast(1.15);
+    }
+
+    html[data-accessibility-colour='high-saturation'] :is(img, picture, video, svg) {
+        filter: saturate(2.4) contrast(1.12);
+    }
+
+    html[data-accessibility-colour='low-saturation'] body > :not([data-accessibility-toolbar]) {
+        filter: saturate(0.55);
+    }
+
+    html[data-accessibility-colour='monochrome'] body > :not([data-accessibility-toolbar]) {
+        filter: grayscale(1);
+    }
+
+    html[data-accessibility-hide-images='true'] :is(img, picture, svg, video, iframe) {
+        visibility: hidden !important;
+    }
+
+    html[data-accessibility-read-mode='true'] body {
+        background: #f8f1e6 !important;
+        color: #171511 !important;
+    }
+
+    html[data-accessibility-read-mode='true'] main {
+        background: #fffaf1 !important;
+        border: 1px solid #d8c7b6;
+        box-shadow: 0 1.5rem 4rem rgb(23 21 17 / 0.08);
+        margin-inline: auto;
+        margin-top: clamp(1.5rem, 4vw, 4rem);
+        margin-bottom: clamp(1.5rem, 4vw, 4rem);
+        max-width: min(78ch, calc(100vw - 2rem));
+        padding: clamp(1.5rem, 4vw, 4rem);
+    }
+
+    html[data-accessibility-read-mode='true'] body > :where(header, footer, [data-customer-session-bar]) {
+        display: none !important;
+    }
+
+    html[data-accessibility-read-mode='true'] main :where(section, article, aside, div, ul, ol, li, details, summary) {
+        background: transparent !important;
+        box-shadow: none !important;
+    }
+
+    html[data-accessibility-read-mode='true'] main :where(section, article) {
+        padding-inline: 0 !important;
+    }
+
+    html[data-accessibility-read-mode='true'] main :where(h1, h2, h3, h4, h5, h6) {
+        color: #171511 !important;
+        max-width: 18em;
+    }
+
+    html[data-accessibility-read-mode='true'] main :where(p, li, blockquote, figcaption, dd) {
+        color: #3f382f !important;
+        max-width: 68ch;
+    }
+
+    html[data-accessibility-read-mode='true'] main :where(a, button) {
+        border-color: #171511 !important;
+        color: #a4432e !important;
+    }
+
+    html[data-accessibility-read-mode='true'] main :where(img, picture, video, iframe) {
+        border-radius: 1rem;
+        margin-block: 1.5rem;
+        max-height: 28rem;
+        object-fit: cover;
+    }
+
+    html[data-accessibility-reading-guide='true'] [data-accessibility-guide] {
+        display: block !important;
+        height: 4.5rem !important;
+        border: 0 !important;
+        background:
+            linear-gradient(to bottom, transparent 0 1rem, rgb(247 212 136 / 0.36) 1rem 3.5rem, transparent 3.5rem 100%),
+            repeating-linear-gradient(to right, transparent 0 1.5rem, rgb(164 67 46 / 0.45) 1.5rem 1.58rem, transparent 1.58rem 3rem);
+        box-shadow:
+            0 -1px 0 rgb(23 21 17 / 0.3),
+            0 1px 0 rgb(23 21 17 / 0.3),
+            0 0.75rem 1.5rem rgb(23 21 17 / 0.12);
+        transform: translateY(-50%) !important;
+    }
+
+    html[data-accessibility-reading-guide='true'] [data-accessibility-guide]::before {
+        position: absolute;
+        top: 50%;
+        left: 0;
+        right: 0;
+        height: 0.18rem;
+        background: #a4432e;
+        box-shadow: 0 0 0 1px rgb(253 247 238 / 0.85);
+        content: '';
+        transform: translateY(-50%);
+    }
+
+    html[data-accessibility-reading-mask='true'] [data-accessibility-mask] {
+        display: block !important;
+        background:
+            linear-gradient(
+                to bottom,
+                rgb(0 0 0 / 0.68) 0 calc(var(--cue-accessibility-mask-y) - 5.5rem),
+                rgb(0 0 0 / 0.18) calc(var(--cue-accessibility-mask-y) - 4.5rem),
+                transparent calc(var(--cue-accessibility-mask-y) - 2.75rem) calc(var(--cue-accessibility-mask-y) + 2.75rem),
+                rgb(0 0 0 / 0.18) calc(var(--cue-accessibility-mask-y) + 4.5rem),
+                rgb(0 0 0 / 0.68) calc(var(--cue-accessibility-mask-y) + 5.5rem) 100%
+            );
+    }
+
+    html[data-accessibility-reading-mask='true'] [data-accessibility-mask]::before {
+        position: absolute;
+        top: calc(var(--cue-accessibility-mask-y) - 2.75rem);
+        left: 0;
+        right: 0;
+        height: 5.5rem;
+        border-block: 2px solid rgb(247 212 136 / 0.9);
+        box-shadow:
+            0 -0.5rem 1rem rgb(0 0 0 / 0.18),
+            0 0.5rem 1rem rgb(0 0 0 / 0.18);
+        content: '';
+    }
+
+    html[data-accessibility-stop-animations='true'] *,
+    html[data-accessibility-stop-animations='true'] *::before,
+    html[data-accessibility-stop-animations='true'] *::after {
+        animation-duration: 0.001ms !important;
+        animation-iteration-count: 1 !important;
+        scroll-behavior: auto !important;
+        transition-duration: 0.001ms !important;
+    }
+
+    html[data-accessibility-highlight-hover='true'] body :where(h1, h2, h3, h4, h5, h6, p, a, button, label, legend, li, blockquote, figcaption, summary, th, td, dt, dd):hover {
+        background-color: #f7d488 !important;
+        box-shadow: 0 0 0 0.18em #f7d488 !important;
+        color: #171511 !important;
+        outline: 3px solid #a4432e !important;
+        outline-offset: 3px !important;
+    }
+
+    html[data-accessibility-highlight-hover='true'] body :where(h1, h2, h3, h4, h5, h6, p, a, button, label, legend, li, blockquote, figcaption, summary, th, td, dt, dd):hover * {
+        color: #171511 !important;
+        fill: #171511 !important;
+        stroke: #171511 !important;
+    }
+
+    html[data-accessibility-highlight-focus='true'] :focus-visible {
+        background-color: #f7d488 !important;
+        box-shadow: 0 0 0 0.18em #f7d488 !important;
+        color: #171511 !important;
+        outline: 4px solid #a4432e !important;
+        outline-offset: 4px !important;
+    }
+
+    html[data-accessibility-highlight-focus='true'] :focus-visible * {
+        color: #171511 !important;
+        fill: #171511 !important;
+        stroke: #171511 !important;
+    }
+
+    html[data-accessibility-big-black-cursor='true'],
+    html[data-accessibility-big-black-cursor='true'] * {
+        cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='48' viewBox='0 0 48 48'%3E%3Cpath fill='black' stroke='white' stroke-width='2' d='M8 3v38l10-9 6 13 8-4-6-12h14z'/%3E%3C/svg%3E") 8 3, auto !important;
+    }
+
+    html[data-accessibility-big-white-cursor='true'],
+    html[data-accessibility-big-white-cursor='true'] * {
+        cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='48' viewBox='0 0 48 48'%3E%3Cpath fill='white' stroke='black' stroke-width='2' d='M8 3v38l10-9 6 13 8-4-6-12h14z'/%3E%3C/svg%3E") 8 3, auto !important;
+    }
+
+    html[data-accessibility-text-magnifier='true'] [data-accessibility-magnifier] {
+        display: block;
+    }
+
     spektrix-login-status [data-logged-in-container][style*='display: block'],
     spektrix-login-status [data-logged-out-container][style*='display: block'] {
         display: inline-flex !important;

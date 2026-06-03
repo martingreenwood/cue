@@ -1,5 +1,14 @@
 <?php
 
+use App\Filament\Fabricator\Layouts\DefaultLayout;
+use App\Filament\Fabricator\PageBlocks\Accordion;
+use App\Filament\Fabricator\PageBlocks\FileDownloads;
+use App\Filament\Fabricator\PageBlocks\Hero;
+use App\Filament\Fabricator\PageBlocks\Media;
+use App\Filament\Fabricator\PageBlocks\RelatedContent;
+use App\Filament\Fabricator\PageBlocks\Text;
+use App\Filament\Fabricator\PageBlocks\TextColumns;
+use App\Filament\Fabricator\PageBlocks\TextWithMedia;
 use Z3d0X\FilamentFabricator\Models\Page;
 use Z3d0X\FilamentFabricator\Resources\PageResource;
 
@@ -39,7 +48,7 @@ return [
          * in addition to those that are auto-registered
          */
         'register' => [
-            //
+            DefaultLayout::class,
         ],
     ],
 
@@ -60,7 +69,14 @@ return [
          * in addition to those that are auto-registered
          */
         'register' => [
-            //
+            Accordion::class,
+            FileDownloads::class,
+            Hero::class,
+            Media::class,
+            RelatedContent::class,
+            Text::class,
+            TextColumns::class,
+            TextWithMedia::class,
         ],
     ],
 

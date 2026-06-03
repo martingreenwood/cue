@@ -103,6 +103,46 @@ test('public pages expose Spektrix customer session status and basket count in a
         ->assertSee('href="'.route('ticketing.basket').'"', false)
         ->assertSee('data-customer-session-bar', false)
         ->assertSee('data-customer-url="https://system.spektrix.com/apitesting/api/v3/customer"', false)
+        ->assertSee('data-customer-search-toggle', false)
+        ->assertSee('aria-controls="customer-search-panel"', false)
+        ->assertSee('data-customer-search-form', false)
+        ->assertSee('data-suggestions-url="'.route('events.suggestions').'"', false)
+        ->assertSee('data-customer-search-panel', false)
+        ->assertSee('data-customer-search-results', false)
+        ->assertSee('action="'.route('events.index').'"', false)
+        ->assertSee('name="q"', false)
+        ->assertSee('Search shows and events')
+        ->assertSee('View results')
+        ->assertSee('data-accessibility-toolbar', false)
+        ->assertSee('aria-controls="accessibility-panel"', false)
+        ->assertSee('Accessibility tools')
+        ->assertSee('Content scaling')
+        ->assertSee('data-accessibility-step="decrease"', false)
+        ->assertSee('data-accessibility-step="increase"', false)
+        ->assertSee('data-accessibility-output="scale"', false)
+        ->assertSee('data-accessibility-percent-base="1"', false)
+        ->assertSee('data-accessibility-percent-base="1.6"', false)
+        ->assertSee('0%')
+        ->assertDontSee('type="range"', false)
+        ->assertSee('Readable font')
+        ->assertSee('data-accessibility-option', false)
+        ->assertSee('peer-checked:bg-[#a4432e]', false)
+        ->assertSee('Highlight titles')
+        ->assertSee('Highlight links')
+        ->assertSee('Text magnifier')
+        ->assertSee('Dark contrast')
+        ->assertSee('Light contrast')
+        ->assertSee('High contrast')
+        ->assertSee('High saturation')
+        ->assertSee('Monochrome')
+        ->assertSee('Low saturation')
+        ->assertSee('Reading guide')
+        ->assertSee('Read mode')
+        ->assertSee('Stop animations')
+        ->assertSee('Reading mask')
+        ->assertSee('Big black cursor')
+        ->assertSee('Big white cursor')
+        ->assertSee('Reset accessibility settings')
         ->assertSee('data-customer-logout-button', false)
         ->assertSee('data-deauthenticate-url="https://system.spektrix.com/apitesting/api/v3/customer/deauthenticate"', false)
         ->assertSee('href="'.route('ticketing.donate').'"', false)
@@ -793,6 +833,47 @@ test('public event search includes provider content when there is no editorial o
         ->assertSuccessful()
         ->assertSee('Source Only Production')
         ->assertSee('An imported family adventure.');
+});
+
+test('public event search suggestions return matching published upcoming events', function () {
+    $event = Event::factory()->create([
+        'title' => 'Private Provider Hamlet Label',
+        'summary' => 'Provider-only synopsis.',
+        'first_performance_at' => now()->addDays(5),
+        'last_performance_at' => now()->addDays(6),
+    ]);
+    EventEditorial::factory()->for($event)->create([
+        'title' => 'Hamlet',
+        'slug' => 'hamlet',
+        'summary' => 'A royal tragedy.',
+        'is_published' => true,
+    ]);
+
+    $pastEvent = Event::factory()->create([
+        'title' => 'Royal Archive',
+        'last_performance_at' => now()->subDay(),
+    ]);
+    EventEditorial::factory()->for($pastEvent)->create([
+        'title' => 'Royal Archive',
+        'is_published' => true,
+    ]);
+
+    $draftEvent = Event::factory()->create(['title' => 'Royal Draft']);
+    EventEditorial::factory()->for($draftEvent)->create([
+        'title' => 'Royal Draft',
+        'is_published' => false,
+    ]);
+
+    $this->getJson(route('events.suggestions', ['q' => 'royal']))
+        ->assertSuccessful()
+        ->assertJsonPath('results.0.title', 'Hamlet')
+        ->assertJsonPath('results.0.summary', 'A royal tragedy.')
+        ->assertJsonPath('results.0.dateLabel', now()->addDays(5)->format('j M Y'))
+        ->assertJsonPath('results.0.url', route('events.show', ['slug' => 'hamlet']))
+        ->assertJsonPath('resultsUrl', route('events.index', ['q' => 'royal']))
+        ->assertJsonMissing(['title' => 'Private Provider Hamlet Label'])
+        ->assertJsonMissing(['title' => 'Royal Archive'])
+        ->assertJsonMissing(['title' => 'Royal Draft']);
 });
 
 test('the public listing filters upcoming events by date window without hiding unsold events', function () {

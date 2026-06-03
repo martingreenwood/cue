@@ -2,9 +2,8 @@
 
 namespace App\Filament\Fabricator\PageBlocks;
 
+use App\Filament\Fabricator\Support\PageBlockFields;
 use Filament\Forms\Components\Builder\Block;
-use Filament\Forms\Components\Textarea;
-use Filament\Forms\Components\TextInput;
 use Z3d0X\FilamentFabricator\PageBlocks\PageBlock;
 
 class Hero extends PageBlock
@@ -15,17 +14,14 @@ class Hero extends PageBlock
     {
         return $block
             ->schema([
-                TextInput::make('title')
-                    ->required()
-                    ->maxLength(140),
-                Textarea::make('subtitle')
-                    ->rows(3)
-                    ->maxLength(500),
+                ...PageBlockFields::heroContent(),
+                ...PageBlockFields::heroMedia(),
+                ...PageBlockFields::buttons(),
             ]);
     }
 
     public static function mutateData(array $data): array
     {
-        return $data;
+        return PageBlockFields::normalizeHeroData($data);
     }
 }

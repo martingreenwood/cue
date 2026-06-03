@@ -3,10 +3,9 @@
 use App\Http\Controllers\PublicCustomerJourneyController;
 use App\Http\Controllers\PublicEventController;
 use Illuminate\Support\Facades\Route;
+use Z3d0X\FilamentFabricator\Http\Controllers\PageController;
 
-Route::get('/', function () {
-    return view('welcome');
-});
+Route::get('/', PageController::class)->name('home');
 
 $eventPathPrefix = trim((string) config('ticketing.event_path_prefix', '/events'), '/');
 
@@ -40,5 +39,6 @@ Route::controller(PublicEventController::class)
     ->name('events.')
     ->group(function (): void {
         Route::get('/', 'index')->name('index');
+        Route::get('/search', 'suggestions')->name('suggestions');
         Route::get('/{slug}', 'show')->name('show');
     });

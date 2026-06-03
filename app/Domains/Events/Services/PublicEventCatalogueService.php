@@ -22,6 +22,7 @@ use App\Domains\Ticketing\Data\BookingHandoffRequestData;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection;
 
 final class PublicEventCatalogueService
 {
@@ -64,6 +65,24 @@ final class PublicEventCatalogueService
             ->first();
 
         return $event instanceof Event ? $this->toPublicData($event) : null;
+    }
+
+    /**
+     * @return Collection<int, PublicEventData>
+     */
+    public function suggestUpcoming(string $term, int $limit = 5): Collection
+    {
+        $query = $this->publishedEvents()
+            ->where('last_performance_at', '>=', now());
+
+        $this->applyPublicTextSearch($query, $term);
+
+        return $query
+            ->with($this->publicRelations())
+            ->orderBy('first_performance_at')
+            ->limit($limit)
+            ->get()
+            ->map(fn (Event $event): PublicEventData => PublicEventData::fromModel($event));
     }
 
     public function filterOptions(): PublicEventFilterOptionsData

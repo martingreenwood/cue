@@ -5,6 +5,7 @@ namespace App\Filament\Fabricator\PageBlocks;
 use Filament\Forms\Components\Builder\Block;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\RichEditor;
+use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Z3d0X\FilamentFabricator\PageBlocks\PageBlock;
 
@@ -16,6 +17,11 @@ class Accordion extends PageBlock
     {
         return $block
             ->schema([
+                TextInput::make('title')
+                    ->maxLength(140),
+                Textarea::make('subtitle')
+                    ->rows(3)
+                    ->maxLength(500),
                 Repeater::make('items')
                     ->required()
                     ->minItems(1)

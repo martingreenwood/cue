@@ -160,6 +160,474 @@ const refreshCustomerSessionBar = async () => {
 
 void refreshCustomerSessionBar();
 
+const accessibilityStorageKey = 'cue.accessibility';
+
+const accessibilityDefaults = {
+    scale: '1',
+    fontSize: '1',
+    lineHeight: '1.6',
+    letterSpacing: '0',
+    textAlign: 'initial',
+    readableFont: false,
+    highlightTitles: false,
+    highlightLinks: false,
+    textMagnifier: false,
+    colourMode: 'default',
+    mute: false,
+    hideImages: false,
+    readMode: false,
+    readingGuide: false,
+    stopAnimations: false,
+    readingMask: false,
+    highlightHover: false,
+    highlightFocus: false,
+    bigBlackCursor: false,
+    bigWhiteCursor: false,
+};
+
+const booleanAccessibilitySettings = Object.entries(accessibilityDefaults)
+    .filter(([, value]) => typeof value === 'boolean')
+    .map(([key]) => key);
+
+const accessibilityDatasetKey = (setting) => setting.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`);
+
+const accessibilityDecimalPlaces = (value) => {
+    const [, decimals = ''] = String(value).split('.');
+
+    return decimals.length;
+};
+
+const accessibilityNumberLabel = (value) => {
+    const number = Number(value);
+
+    if (!Number.isFinite(number)) {
+        return value;
+    }
+
+    return Number.isInteger(number) ? String(number) : String(Number(number.toFixed(2)));
+};
+
+const accessibilityPercentageLabel = (control, value) => {
+    const number = Number(value);
+    const percentBase = Number(control.dataset.accessibilityPercentBase ?? 0);
+
+    if (!Number.isFinite(number) || !Number.isFinite(percentBase)) {
+        return accessibilityNumberLabel(value);
+    }
+
+    if (percentBase === 0) {
+        return `${Math.round(number * 100)}%`;
+    }
+
+    const percentage = Math.round(((number - percentBase) / percentBase) * 100);
+
+    return `${percentage > 0 ? '+' : ''}${percentage}%`;
+};
+
+const accessibilityJustifyValue = (textAlign) => ({
+    left: 'flex-start',
+    center: 'center',
+    right: 'flex-end',
+})[textAlign] ?? 'normal';
+
+const accessibilityJustifyItemsValue = (textAlign) => ({
+    left: 'start',
+    center: 'center',
+    right: 'end',
+})[textAlign] ?? 'normal';
+
+const storedAccessibilitySettings = () => {
+    if (!('localStorage' in window)) {
+        return { ...accessibilityDefaults };
+    }
+
+    try {
+        const storedSettings = JSON.parse(window.localStorage.getItem(accessibilityStorageKey));
+
+        return {
+            ...accessibilityDefaults,
+            ...(storedSettings !== null && typeof storedSettings === 'object' ? storedSettings : {}),
+        };
+    } catch {
+        return { ...accessibilityDefaults };
+    }
+};
+
+const saveAccessibilitySettings = (settings) => {
+    try {
+        if ('localStorage' in window) {
+            window.localStorage.setItem(accessibilityStorageKey, JSON.stringify(settings));
+        }
+    } catch {
+        // Keep the toolbar usable when storage is blocked.
+    }
+};
+
+const applyAccessibilitySettings = (settings) => {
+    const root = document.documentElement;
+
+    root.style.setProperty('--cue-accessibility-scale', settings.scale);
+    root.style.setProperty('--cue-accessibility-font-size', settings.fontSize);
+    root.style.setProperty('--cue-accessibility-line-height', settings.lineHeight);
+    root.style.setProperty('--cue-accessibility-letter-spacing', `${settings.letterSpacing}em`);
+    root.style.setProperty('--cue-accessibility-text-align', settings.textAlign);
+    root.style.setProperty('--cue-accessibility-justify-content', accessibilityJustifyValue(settings.textAlign));
+    root.style.setProperty('--cue-accessibility-justify-items', accessibilityJustifyItemsValue(settings.textAlign));
+    root.dataset.accessibilityColour = accessibilityDatasetKey(settings.colourMode);
+
+    if (settings.textAlign === 'initial') {
+        delete root.dataset.accessibilityTextAlign;
+    } else {
+        root.dataset.accessibilityTextAlign = settings.textAlign;
+    }
+
+    for (const setting of booleanAccessibilitySettings) {
+        const datasetKey = `accessibility${setting.charAt(0).toUpperCase()}${setting.slice(1)}`;
+
+        if (settings[setting] === true) {
+            root.dataset[datasetKey] = 'true';
+        } else {
+            delete root.dataset[datasetKey];
+        }
+    }
+
+    for (const element of document.querySelectorAll('audio, video')) {
+        element.muted = settings.mute === true;
+    }
+};
+
+const syncAccessibilityControls = (toolbar, settings) => {
+    for (const control of toolbar.querySelectorAll('[data-accessibility-setting]')) {
+        const setting = control.dataset.accessibilitySetting;
+
+        if (control.type === 'checkbox') {
+            control.checked = settings[setting] === true;
+        } else if (control.type === 'radio') {
+            control.checked = settings[setting] === control.value;
+        } else {
+            control.value = settings[setting];
+        }
+
+        const output = toolbar.querySelector(`[data-accessibility-output="${setting}"]`);
+
+        if (output !== null) {
+            output.textContent = accessibilityPercentageLabel(control, settings[setting]);
+        }
+    }
+};
+
+const initializeAccessibilityToolbar = () => {
+    const toolbar = document.querySelector('[data-accessibility-toolbar]');
+
+    if (toolbar === null) {
+        return;
+    }
+
+    const toggle = toolbar.querySelector('[data-accessibility-toggle]');
+    const panel = toolbar.querySelector('[data-accessibility-panel]');
+    const close = toolbar.querySelector('[data-accessibility-close]');
+    const reset = toolbar.querySelector('[data-accessibility-reset]');
+    const guide = toolbar.querySelector('[data-accessibility-guide]');
+    const mask = toolbar.querySelector('[data-accessibility-mask]');
+    const magnifier = toolbar.querySelector('[data-accessibility-magnifier]');
+    let settings = storedAccessibilitySettings();
+
+    const setPanelOpen = (isOpen) => {
+        toggle.setAttribute('aria-expanded', String(isOpen));
+        panel.classList.toggle('hidden', !isOpen);
+
+        if (isOpen) {
+            window.setTimeout(() => panel.querySelector('[data-accessibility-close]')?.focus(), 50);
+        }
+    };
+
+    const updateSettings = (nextSettings) => {
+        settings = {
+            ...settings,
+            ...nextSettings,
+        };
+
+        if (settings.bigBlackCursor === true && nextSettings.bigWhiteCursor === true) {
+            settings.bigBlackCursor = false;
+        }
+
+        if (settings.bigWhiteCursor === true && nextSettings.bigBlackCursor === true) {
+            settings.bigWhiteCursor = false;
+        }
+
+        applyAccessibilitySettings(settings);
+        syncAccessibilityControls(toolbar, settings);
+        saveAccessibilitySettings(settings);
+    };
+
+    applyAccessibilitySettings(settings);
+    syncAccessibilityControls(toolbar, settings);
+
+    toggle.addEventListener('click', () => {
+        setPanelOpen(toggle.getAttribute('aria-expanded') !== 'true');
+    });
+
+    close.addEventListener('click', () => {
+        setPanelOpen(false);
+        toggle.focus();
+    });
+
+    reset.addEventListener('click', () => {
+        updateSettings({ ...accessibilityDefaults });
+    });
+
+    toolbar.addEventListener('change', (event) => {
+        const control = event.target.closest('[data-accessibility-setting]');
+
+        if (control === null) {
+            return;
+        }
+
+        const setting = control.dataset.accessibilitySetting;
+        const value = control.type === 'checkbox' ? control.checked : control.value;
+
+        if (control.type === 'radio' && control.checked !== true) {
+            return;
+        }
+
+        updateSettings({ [setting]: value });
+    });
+
+    toolbar.addEventListener('input', (event) => {
+        const control = event.target.closest('input[type="range"][data-accessibility-setting]');
+
+        if (control !== null) {
+            updateSettings({ [control.dataset.accessibilitySetting]: control.value });
+        }
+    });
+
+    toolbar.addEventListener('click', (event) => {
+        const button = event.target.closest('[data-accessibility-step]');
+
+        if (button === null) {
+            return;
+        }
+
+        const control = toolbar.querySelector(`[data-accessibility-setting="${button.dataset.accessibilityStepTarget}"]`);
+
+        if (control === null) {
+            return;
+        }
+
+        const currentValue = Number(settings[control.dataset.accessibilitySetting]);
+        const step = Number(control.step);
+        const min = Number(control.min);
+        const max = Number(control.max);
+        const direction = button.dataset.accessibilityStep === 'increase' ? 1 : -1;
+        const decimalPlaces = Math.max(accessibilityDecimalPlaces(control.step), accessibilityDecimalPlaces(settings[control.dataset.accessibilitySetting]));
+        const nextValue = Math.min(max, Math.max(min, currentValue + (step * direction))).toFixed(decimalPlaces);
+
+        updateSettings({ [control.dataset.accessibilitySetting]: nextValue });
+    });
+
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && toggle.getAttribute('aria-expanded') === 'true') {
+            setPanelOpen(false);
+            toggle.focus();
+        }
+    });
+
+    document.addEventListener('mousemove', (event) => {
+        if (guide !== null) {
+            guide.style.top = `${event.clientY}px`;
+        }
+
+        if (mask !== null) {
+            mask.style.setProperty('--cue-accessibility-mask-y', `${event.clientY}px`);
+        }
+    });
+
+    document.addEventListener('mouseover', (event) => {
+        if (magnifier === null || settings.textMagnifier !== true) {
+            return;
+        }
+
+        const text = event.target.closest('a, button, p, li, h1, h2, h3, h4, h5, h6, label')?.textContent?.trim();
+
+        if (text === undefined || text === '') {
+            magnifier.textContent = '';
+            magnifier.classList.add('hidden');
+
+            return;
+        }
+
+        magnifier.textContent = text.replace(/\s+/g, ' ').slice(0, 180);
+        magnifier.classList.remove('hidden');
+    });
+};
+
+initializeAccessibilityToolbar();
+
+const initializeCustomerSearchPanel = () => {
+    const toggle = document.querySelector('[data-customer-search-toggle]');
+    const panel = document.querySelector('[data-customer-search-panel]');
+    const form = document.querySelector('[data-customer-search-form]');
+    const input = document.querySelector('[data-customer-search-input]');
+    const results = document.querySelector('[data-customer-search-results]');
+    const status = document.querySelector('[data-customer-search-status]');
+    let searchTimeout = null;
+    let searchRequest = null;
+
+    if (toggle === null || panel === null || form === null || input === null || results === null) {
+        return;
+    }
+
+    const setSearchPanelOpen = (isOpen) => {
+        toggle.setAttribute('aria-expanded', String(isOpen));
+        panel.setAttribute('aria-hidden', String(!isOpen));
+        panel.classList.toggle('max-h-0', !isOpen);
+        panel.classList.toggle('max-h-[42rem]', isOpen);
+        panel.classList.toggle('-translate-y-2', !isOpen);
+        panel.classList.toggle('translate-y-0', isOpen);
+        panel.classList.toggle('opacity-0', !isOpen);
+        panel.classList.toggle('opacity-100', isOpen);
+
+        if (isOpen) {
+            window.setTimeout(() => input?.focus(), 180);
+        }
+    };
+
+    const setSearchStatus = (message) => {
+        if (status !== null) {
+            status.textContent = message;
+        }
+    };
+
+    const hideSuggestions = () => {
+        results.hidden = true;
+        results.replaceChildren();
+        input.setAttribute('aria-expanded', 'false');
+    };
+
+    const viewResultsUrl = (term, fallback = null) => {
+        if (fallback !== null) {
+            return fallback;
+        }
+
+        const url = new URL(form.action);
+        url.searchParams.set('q', term);
+
+        return url.toString();
+    };
+
+    const suggestionLink = (suggestion) => {
+        const link = document.createElement('a');
+        link.href = suggestion.url;
+        link.className = 'block px-4 py-3 transition hover:bg-[#2f2a23] focus-visible:outline-2 focus-visible:outline-inset focus-visible:outline-[#fdf7ee]';
+
+        const title = document.createElement('span');
+        title.className = 'block font-semibold text-[#fdf7ee]';
+        title.textContent = suggestion.title;
+        link.append(title);
+
+        const meta = [suggestion.dateLabel, suggestion.summary].filter(Boolean).join(' · ');
+
+        if (meta !== '') {
+            const summary = document.createElement('span');
+            summary.className = 'mt-1 block text-sm leading-6 text-[#d8c7b6]';
+            summary.textContent = meta;
+            link.append(summary);
+        }
+
+        return link;
+    };
+
+    const renderSuggestions = (payload, term) => {
+        results.replaceChildren();
+        results.hidden = false;
+        input.setAttribute('aria-expanded', 'true');
+
+        if (!Array.isArray(payload.results) || payload.results.length === 0) {
+            const empty = document.createElement('p');
+            empty.className = 'px-4 py-3 text-sm text-[#d8c7b6]';
+            empty.textContent = 'No quick matches yet. You can still view the full results.';
+            results.append(empty);
+        } else {
+            const list = document.createElement('ul');
+            list.setAttribute('role', 'listbox');
+            list.className = 'divide-y divide-[#fdf7ee]/10';
+
+            for (const suggestion of payload.results) {
+                const item = document.createElement('li');
+                item.setAttribute('role', 'option');
+                item.append(suggestionLink(suggestion));
+                list.append(item);
+            }
+
+            results.append(list);
+        }
+
+        const footer = document.createElement('a');
+        footer.href = viewResultsUrl(term, payload.resultsUrl ?? null);
+        footer.className = 'block border-t border-[#fdf7ee]/15 px-4 py-3 text-sm font-semibold text-[#f1dccd] underline decoration-[#f1dccd]/35 underline-offset-4 hover:bg-[#2f2a23] hover:decoration-[#f1dccd] focus-visible:outline-2 focus-visible:outline-inset focus-visible:outline-[#fdf7ee]';
+        footer.textContent = `View all results for “${term}”`;
+        results.append(footer);
+    };
+
+    const searchSuggestions = () => {
+        const term = input.value.trim().replace(/\s+/g, ' ');
+
+        window.clearTimeout(searchTimeout);
+        searchRequest?.abort();
+
+        if (term.length < 2) {
+            hideSuggestions();
+            setSearchStatus('Type at least two characters to see suggestions.');
+
+            return;
+        }
+
+        setSearchStatus('Searching shows and events.');
+
+        searchTimeout = window.setTimeout(async () => {
+            searchRequest = new AbortController();
+
+            try {
+                const url = new URL(form.dataset.suggestionsUrl, window.location.origin);
+                url.searchParams.set('q', term);
+
+                const response = await fetch(url, {
+                    headers: { Accept: 'application/json' },
+                    signal: searchRequest.signal,
+                });
+
+                if (!response.ok) {
+                    throw new Error('Search suggestions unavailable.');
+                }
+
+                renderSuggestions(await response.json(), term);
+                setSearchStatus('Search suggestions updated.');
+            } catch (error) {
+                if (error.name !== 'AbortError') {
+                    hideSuggestions();
+                    setSearchStatus('Search suggestions are unavailable. Use view results to continue.');
+                }
+            }
+        }, 180);
+    };
+
+    toggle.addEventListener('click', () => {
+        setSearchPanelOpen(toggle.getAttribute('aria-expanded') !== 'true');
+    });
+
+    input.addEventListener('input', searchSuggestions);
+
+    panel.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') {
+            setSearchPanelOpen(false);
+            hideSuggestions();
+            toggle.focus();
+        }
+    });
+};
+
+initializeCustomerSearchPanel();
+
 const redirectAuthenticatedLoginPage = async () => {
     const loginPage = document.querySelector('[data-customer-login-page]');
 
